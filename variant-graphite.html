@@ -79,6 +79,8 @@
 .warm-dot { background: #bd7356; }
 .dark-dot { background: #292e32; box-shadow: inset -4px 0 #d4a17b; }
 .light-dot { background: #fff; box-shadow: inset -4px 0 #245caa; }
+.emerald-dot { background: #123b35; box-shadow: inset -4px 0 #e5c688; }
+.sand-dot { background: #f5eddd; box-shadow: inset -4px 0 #59653c; }
 
 /* 01. Graphite and copper: bold typography, precise edges, warm metal. */
 html[data-theme="dark"] {
@@ -195,6 +197,77 @@ html[data-theme="light"] {
 [data-theme="light"] .light { background: #245caa; color: white; }
 [data-theme="light"] .copy-button { color: #245caa; border-color: #245caa; }
 
+/* 03–04. Natural palettes: emerald/gold and sand/olive. */
+html[data-theme="emerald"] {
+  --paper: #123b35;
+  --ink: #f9f3e6;
+  --muted: #c0d1c8;
+  --accent: #e5c688;
+  --line: #41665a;
+  --palette-surface: #1b463e;
+  --palette-contact: #0b2b27;
+  --palette-button-ink: #123b35;
+  --palette-hover: #f2dbaf;
+  --palette-form: #163c35;
+  --palette-field-line: #7e9a8d;
+  --palette-art: #b9b39c;
+  --palette-metal: #9cab9e;
+  --palette-mixed: #c4bda8;
+}
+html[data-theme="sand"] {
+  --paper: #f5eddd;
+  --ink: #353e2b;
+  --muted: #62684e;
+  --accent: #59653c;
+  --line: #d3ccb4;
+  --palette-surface: #e9e2cd;
+  --palette-contact: #e5dcc3;
+  --palette-button-ink: #ffffff;
+  --palette-hover: #414e29;
+  --palette-form: #fbf7ed;
+  --palette-field-line: #91977c;
+  --palette-art: #ded0b4;
+  --palette-metal: #c9cfba;
+  --palette-mixed: #dfd9c3;
+}
+:is([data-theme="emerald"], [data-theme="sand"]) .intro,
+:is([data-theme="emerald"], [data-theme="sand"]) .hero-foot,
+:is([data-theme="emerald"], [data-theme="sand"]) .body-copy,
+:is([data-theme="emerald"], [data-theme="sand"]) .section-heading > p,
+:is([data-theme="emerald"], [data-theme="sand"]) .card > p,
+:is([data-theme="emerald"], [data-theme="sand"]) .gallery-note,
+:is([data-theme="emerald"], [data-theme="sand"]) .steps p { color: var(--muted); }
+:is([data-theme="emerald"], [data-theme="sand"]) .ribbon,
+:is([data-theme="emerald"], [data-theme="sand"]) .ideas { background: var(--palette-surface); }
+:is([data-theme="emerald"], [data-theme="sand"]) .button {
+  background: var(--accent);
+  color: var(--palette-button-ink);
+}
+:is([data-theme="emerald"], [data-theme="sand"]) .button:hover { background: var(--palette-hover); }
+:is([data-theme="emerald"], [data-theme="sand"]) .hero-art { border: 1px solid var(--line); }
+:is([data-theme="emerald"], [data-theme="sand"]) .art-label { color: #303c2d; }
+:is([data-theme="emerald"], [data-theme="sand"]) .art-number { background: var(--paper); color: var(--ink); }
+:is([data-theme="emerald"], [data-theme="sand"]) .card-art { background: var(--palette-art); }
+:is([data-theme="emerald"], [data-theme="sand"]) .card-art.metal { background: var(--palette-metal); }
+:is([data-theme="emerald"], [data-theme="sand"]) .card-art.mixed { background: var(--palette-mixed); }
+:is([data-theme="emerald"], [data-theme="sand"]) .contact { background: var(--palette-contact); color: var(--ink); }
+:is([data-theme="emerald"], [data-theme="sand"]) .contact em { color: var(--accent); }
+:is([data-theme="emerald"], [data-theme="sand"]) .contact p,
+:is([data-theme="emerald"], [data-theme="sand"]) .contact .eyebrow { color: var(--muted); }
+:is([data-theme="emerald"], [data-theme="sand"]) .brief { border-color: var(--line); }
+:is([data-theme="emerald"], [data-theme="sand"]) select,
+:is([data-theme="emerald"], [data-theme="sand"]) textarea {
+  background: var(--palette-form);
+  color: var(--ink);
+  border-color: var(--palette-field-line);
+}
+:is([data-theme="emerald"], [data-theme="sand"]) option { background: var(--palette-form); color: var(--ink); }
+:is([data-theme="emerald"], [data-theme="sand"]) textarea::placeholder { color: var(--muted); }
+:is([data-theme="emerald"], [data-theme="sand"]) .copy-button { color: var(--accent); border-color: var(--accent); }
+[data-theme="emerald"] .brand img { filter: brightness(2) saturate(.5); }
+[data-theme="emerald"] .hero-art > img { filter: saturate(.7) brightness(.9); }
+[data-theme="sand"] .brand img { filter: hue-rotate(48deg) saturate(.6) brightness(.8); }
+
 @media (max-width: 700px) {
   .theme-preview-inner { align-items: flex-start; flex-direction: column; gap: 6px; padding-block: 12px; }
   .theme-preview-label { font-size: 10px; }
@@ -226,6 +299,8 @@ html[data-theme="light"] {
         <button type="button" data-theme-choice="warm" aria-pressed="true"><span class="theme-dot warm-dot"></span>Исходный</button>
         <button type="button" data-theme-choice="dark" aria-pressed="false"><span class="theme-dot dark-dot"></span>Графит и медь</button>
         <button type="button" data-theme-choice="light" aria-pressed="false"><span class="theme-dot light-dot"></span>Белый и синий</button>
+        <button type="button" data-theme-choice="emerald" aria-pressed="false"><span class="theme-dot emerald-dot"></span>Изумруд и золото</button>
+        <button type="button" data-theme-choice="sand" aria-pressed="false"><span class="theme-dot sand-dot"></span>Песок и олива</button>
       </div>
     </div>
   </aside>
@@ -248,7 +323,10 @@ html[data-theme="light"] {
   </main>
   <footer class="wrap footer"><a class="brand" href="#"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTI0ZjMyIiBzdHJva2Utd2lkdGg9IjMiIGQ9Ik00IDM5aDExVjI4aDExVjE3aDExVjZNMTEgNDVoMTFWMzRoMTFWMjNoMTEiLz48L3N2Zz4K" width="32" height="32" alt=""><span>МИР СТУПЕНЕЙ<small>ЛЕСТНИЦЫ · КЕМЕРОВО</small></span></a><span>Продумано до последней ступени.</span><a href="#">Наверх ↑</a></footer>
 <script>
-const themeColors = { warm: '#eee9df', dark: '#191c1e', light: '#ffffff' };
+const themeColors = {
+  warm: '#eee9df', dark: '#191c1e', light: '#ffffff',
+  emerald: '#123b35', sand: '#f5eddd',
+};
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]').content = themeColors[theme];

@@ -1,4 +1,7 @@
-const themeColors = { warm: '#eee9df', dark: '#191c1e', light: '#ffffff' };
+const themeColors = {
+  warm: '#eee9df', dark: '#191c1e', light: '#ffffff',
+  emerald: '#123b35', sand: '#f5eddd',
+};
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]').content = themeColors[theme];
