@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="warm">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,9 +8,20 @@
   <title>Мир ступеней — лестницы в Кемерово</title>
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="themes.css">
   <script src="script.js" defer></script>
 </head>
 <body>
+  <aside class="theme-preview" aria-label="Сравнение вариантов оформления">
+    <div class="wrap theme-preview-inner">
+      <span class="theme-preview-label">Вариант оформления</span>
+      <div class="theme-choices" role="group" aria-label="Выберите оформление">
+        <button type="button" data-theme-choice="warm" aria-pressed="true"><span class="theme-dot warm-dot"></span>Исходный</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false"><span class="theme-dot dark-dot"></span>Графит и медь</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false"><span class="theme-dot light-dot"></span>Белый и синий</button>
+      </div>
+    </div>
+  </aside>
   <header class="header wrap">
     <a class="brand" href="#" aria-label="Мир ступеней, на главную"><img src="assets/mark.svg" width="40" height="40" alt=""><span>МИР СТУПЕНЕЙ<small>ЛЕСТНИЦЫ · КЕМЕРОВО</small></span></a>
     <button class="menu-toggle" aria-expanded="false" aria-controls="navigation">Меню <span>＋</span></button>

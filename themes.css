@@ -1,0 +1,199 @@
+/* Comparison controls are for choosing the design before publication. */
+.button > span, .nav-contact > span, .card-description > span, .detail-symbol {
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 0;
+}
+.button > span::before, .nav-contact > span::before,
+.card-description > span::before, .detail-symbol::before {
+  content: '';
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+}
+.button > span::after, .nav-contact > span::after,
+.card-description > span::after, .detail-symbol::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 0;
+  width: 18px;
+  border-top: 1px solid currentColor;
+  transform: rotate(-45deg);
+}
+.detail-symbol { transform: scale(2); transform-origin: left top; margin: 8px 0 20px; }
+.ribbon i { font-size: 0; }
+.ribbon i::before { content: '+'; font-size: 20px; }
+.theme-preview {
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+.theme-preview-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 14px;
+}
+.theme-preview-label { font-size: 11px; letter-spacing: .6px; }
+.theme-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.theme-choices button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.theme-choices button[aria-pressed="true"] { border-color: var(--accent); }
+.theme-choices button:hover { border-color: var(--muted); }
+.theme-dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #888; }
+.warm-dot { background: #bd7356; }
+.dark-dot { background: #292e32; box-shadow: inset -4px 0 #d4a17b; }
+.light-dot { background: #fff; box-shadow: inset -4px 0 #245caa; }
+
+/* 01. Graphite and copper: bold typography, precise edges, warm metal. */
+html[data-theme="dark"] {
+  --paper: #191c1e;
+  --ink: #f4f0e9;
+  --muted: #b4b7b8;
+  --accent: #dfac83;
+  --line: #3d4143;
+}
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] .card h3,
+[data-theme="dark"] .detail p,
+[data-theme="dark"] .brief h3 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 600;
+}
+[data-theme="dark"] h1 { font-size: clamp(42px, 4.2vw, 62px); letter-spacing: -2.8px; line-height: 1.08; }
+[data-theme="dark"] h2 { font-size: clamp(34px, 3.5vw, 50px); }
+[data-theme="dark"] em { font-style: normal; }
+[data-theme="dark"] .hero-art { border: 1px solid #55524b; }
+[data-theme="dark"] .hero-art > img { filter: brightness(.78) saturate(.65); }
+[data-theme="dark"] .art-label { color: #242620; }
+[data-theme="dark"] .art-number { background: #191c1edb; color: #f4f0e9; }
+[data-theme="dark"] .brand img { filter: brightness(1.85) saturate(.55); }
+[data-theme="dark"] .button { background: #dfac83; color: #191c1e; font-weight: 700; }
+[data-theme="dark"] .button:hover { background: #efc9a8; }
+[data-theme="dark"] .intro,
+[data-theme="dark"] .hero-foot,
+[data-theme="dark"] .body-copy,
+[data-theme="dark"] .section-heading > p,
+[data-theme="dark"] .card > p,
+[data-theme="dark"] .gallery-note,
+[data-theme="dark"] .steps p { color: var(--muted); }
+[data-theme="dark"] .ribbon { background: #262a2c; border-block: 1px solid var(--line); }
+[data-theme="dark"] .ribbon span:last-child { font-family: Arial, sans-serif; font-size: 19px; }
+[data-theme="dark"] .ideas { background: #222628; }
+[data-theme="dark"] .card-art { background: #aaa090; }
+[data-theme="dark"] .card-art.metal { background: #979e9b; }
+[data-theme="dark"] .card-art.mixed { background: #b3aaa0; }
+[data-theme="dark"] .card h3 { font-size: 22px; letter-spacing: -.5px; }
+[data-theme="dark"] .steps li { border-top: 2px solid #dfac83; }
+[data-theme="dark"] .steps li > span { font-family: Arial, sans-serif; font-weight: 700; }
+[data-theme="dark"] .contact { background: #101315; border-top: 1px solid var(--line); }
+[data-theme="dark"] .contact em { color: var(--accent); }
+[data-theme="dark"] .contact p,
+[data-theme="dark"] .contact .eyebrow { color: #b4b7b8; }
+[data-theme="dark"] .brief { border-color: #4a4e50; }
+[data-theme="dark"] select,
+[data-theme="dark"] textarea { background: #202426; color: #f4f0e9; border-color: #717779; }
+[data-theme="dark"] option { background: #202426; color: #f4f0e9; }
+[data-theme="dark"] textarea::placeholder { color: #b4b7b8; }
+[data-theme="dark"] .copy-button { color: #dfac83; border-color: #dfac83; }
+
+/* 02. White and blue: open space, soft cards and contemporary geometry. */
+html[data-theme="light"] {
+  --paper: #ffffff;
+  --ink: #162d49;
+  --muted: #56677c;
+  --accent: #245caa;
+  --line: #d8e2ed;
+}
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] .card h3,
+[data-theme="light"] .brief h3,
+[data-theme="light"] .detail p {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 500;
+}
+[data-theme="light"] h1 { font-size: clamp(42px, 4.3vw, 64px); letter-spacing: -2.7px; line-height: 1.12; }
+[data-theme="light"] h2 { font-size: clamp(34px, 3.5vw, 50px); line-height: 1.14; }
+[data-theme="light"] em { font-style: normal; }
+[data-theme="light"] .header { border-bottom: none; }
+[data-theme="light"] .brand { letter-spacing: .8px; }
+[data-theme="light"] .brand img { filter: hue-rotate(180deg) saturate(1.3); }
+[data-theme="light"] .hero { padding-top: 20px; padding-bottom: 60px; }
+[data-theme="light"] .hero-art { border-radius: 150px 16px 16px 16px; }
+[data-theme="light"] .hero-art > img { filter: saturate(.6); }
+[data-theme="light"] .art-label { left: auto; right: 25px; color: #162d49; }
+[data-theme="light"] .art-number { background: #ffffffd9; border-radius: 30px; color: #162d49; }
+[data-theme="light"] .button { border-radius: 50px; font-weight: 600; padding-inline: 27px; }
+[data-theme="light"] .button:hover { background: #19477f; }
+[data-theme="light"] .intro,
+[data-theme="light"] .hero-foot,
+[data-theme="light"] .body-copy,
+[data-theme="light"] .section-heading > p,
+[data-theme="light"] .card > p,
+[data-theme="light"] .gallery-note,
+[data-theme="light"] .steps p { color: var(--muted); }
+[data-theme="light"] .ribbon { background: #edf3fa; }
+[data-theme="light"] .ribbon span:last-child { font-family: Arial, sans-serif; font-size: 19px; }
+[data-theme="light"] .detail { border-left: 3px solid #245caa; }
+[data-theme="light"] .ideas { background: #f3f6fb; }
+[data-theme="light"] .card { background: white; border: 1px solid #d8e2ed; border-radius: 18px; overflow: hidden; padding-bottom: 22px; }
+[data-theme="light"] .card-art { background: #e3e5e5; }
+[data-theme="light"] .card-art.metal { background: #d9e3ee; }
+[data-theme="light"] .card-art.mixed { background: #e8e6e2; }
+[data-theme="light"] .card-description { padding-inline: 22px; }
+[data-theme="light"] .card h3 { font-size: 22px; letter-spacing: -.5px; }
+[data-theme="light"] .card > p { padding-inline: 22px; }
+[data-theme="light"] .steps { gap: 16px; }
+[data-theme="light"] .steps li { padding: 22px; border: 1px solid #d8e2ed; border-radius: 16px; }
+[data-theme="light"] .steps li > span { font-family: Arial, sans-serif; font-size: 24px; }
+[data-theme="light"] .contact { background: #eaf1fa; color: #162d49; }
+[data-theme="light"] .contact em { color: #245caa; }
+[data-theme="light"] .contact p,
+[data-theme="light"] .contact .eyebrow { color: #51657d; }
+[data-theme="light"] .brief { border-color: #c2d2e5; }
+[data-theme="light"] select,
+[data-theme="light"] textarea { background: #ffffff; color: #162d49; border-color: #9cafc6; border-radius: 8px; }
+[data-theme="light"] option { background: #ffffff; color: #162d49; }
+[data-theme="light"] textarea::placeholder { color: #56677c; }
+[data-theme="light"] .light { background: #245caa; color: white; }
+[data-theme="light"] .copy-button { color: #245caa; border-color: #245caa; }
+
+@media (max-width: 700px) {
+  .theme-preview-inner { align-items: flex-start; flex-direction: column; gap: 6px; padding-block: 12px; }
+  .theme-preview-label { font-size: 10px; }
+  .theme-choices { gap: 3px; }
+  .theme-choices button { font-size: 10px; padding: 8px; min-height: 40px; }
+  [data-theme="dark"] h1,
+  [data-theme="light"] h1 { font-size: clamp(39px, 9.5vw, 60px); letter-spacing: -1.7px; }
+  [data-theme="dark"] h2,
+  [data-theme="light"] h2 { font-size: 34px; }
+  [data-theme="light"] .hero { padding-top: 10px; padding-bottom: 25px; }
+  [data-theme="light"] .hero-art { border-top-left-radius: 95px; }
+  [data-theme="dark"] .ribbon span:last-child,
+  [data-theme="light"] .ribbon span:last-child { font-size: 16px; }
+  [data-theme="light"] .steps { gap: 12px; }
+  [data-theme="light"] .steps li { padding: 15px; }
+}
+@media (max-width: 380px) {
+  [data-theme="light"] .steps { grid-template-columns: 1fr; }
+}
