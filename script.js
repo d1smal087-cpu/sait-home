@@ -1,28 +1,3 @@
-const themeColors = {
-  warm: '#eee9df', dark: '#191c1e', light: '#ffffff',
-  emerald: '#123b35', sand: '#f5eddd',
-};
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]').content = themeColors[theme];
-  document.querySelectorAll('[data-theme-choice]').forEach((button) => {
-    button.setAttribute('aria-pressed', String(button.dataset.themeChoice === theme));
-  });
-}
-const requestedTheme = new URLSearchParams(location.search).get('theme');
-applyTheme(Object.hasOwn(themeColors, requestedTheme) ? requestedTheme : document.documentElement.dataset.theme);
-document.querySelectorAll('[data-theme-choice]').forEach((button) => {
-  button.addEventListener('click', () => {
-    applyTheme(button.dataset.themeChoice);
-    // Some browsers restrict history updates when opening local files.
-    try {
-      const url = new URL(location.href);
-      url.searchParams.set('theme', button.dataset.themeChoice);
-      history.replaceState(null, '', url);
-    } catch { /* Switching still works without updating the address. */ }
-  });
-});
-
 const menu = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('#navigation');
 function closeMenu() {
