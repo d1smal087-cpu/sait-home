@@ -89,6 +89,10 @@
 .viewer-footer button:hover, .viewer-close:hover { border-color: var(--accent); color: var(--accent); }
 #work-counter { margin: 0; font-size: 12px; text-align: center; color: var(--muted); }
 body.viewer-open { overflow: hidden; }
+.portfolio-social { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--line); padding-top: 26px; margin-top: 30px; }
+.portfolio-social h3 { margin: 0; font: 400 25px/1.3 Georgia, 'Times New Roman', serif; }
+.portfolio-social p { margin: 8px 0 0; font-size: 13px; color: var(--muted); max-width: 660px; }
+.portfolio-social .button { flex-shrink: 0; }
 @media (max-width: 1050px) { .work-photo { height: 300px; } }
 @media (max-width: 700px) {
   .work-photo { height: 420px; }
@@ -97,4 +101,5 @@ body.viewer-open { overflow: hidden; }
   .viewer-footer { gap: 8px; }
   .viewer-footer button { padding: 10px; font-size: 12px; }
   #work-counter { font-size: 11px; }
+  .portfolio-social { flex-direction: column; align-items: flex-start; gap: 20px; }
 }
