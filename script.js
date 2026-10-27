@@ -18,28 +18,6 @@ document.addEventListener('keydown', (event) => {
     menu.focus();
   }
 });
-document.querySelector('#brief-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const place = document.querySelector('#place').value;
-  const wish = document.querySelector('#wish').value.trim();
-  document.querySelector('#brief-text').value = `Здравствуйте! Хочу обсудить изготовление лестницы в «Мире ступеней».\nГород: Кемерово.\nРасположение: ${place.toLowerCase()}.\n${wish ? `Пожелания: ${wish}` : 'Хочу обсудить варианты конструкции и материалов.'}`;
-  document.querySelector('#brief-result').hidden = false;
-  document.querySelector('#copy-status').textContent = '';
-  document.querySelector('#brief-text').focus();
-});
-document.querySelector('#copy-brief').addEventListener('click', async () => {
-  const field = document.querySelector('#brief-text');
-  const status = document.querySelector('#copy-status');
-  try {
-    await navigator.clipboard.writeText(field.value);
-    status.textContent = 'Описание скопировано.';
-  } catch {
-    field.focus();
-    field.select();
-    status.textContent = 'Текст выделен. Скопируйте его через меню устройства или Ctrl+C.';
-  }
-});
-
 const workLinks = [...document.querySelectorAll('[data-gallery]')];
 const viewer = document.querySelector('#work-viewer');
 if (viewer && typeof viewer.showModal === 'function') {

@@ -103,6 +103,16 @@ body.viewer-open { overflow: hidden; }
 .portfolio-social h3 { margin: 0; font: 400 25px/1.3 Georgia, 'Times New Roman', serif; }
 .portfolio-social p { margin: 8px 0 0; font-size: 13px; color: var(--muted); max-width: 660px; }
 .portfolio-social .button { flex-shrink: 0; }
+.nav-contact, .contact-phone, .footer-phone { white-space: nowrap; }
+.contact-phone { display: block; width: fit-content; color: var(--accent); font-size: clamp(25px, 2.8vw, 36px); margin-top: 30px; line-height: 1.4; }
+.contact .location { display: block; margin-top: 12px; }
+.footer .footer-phone { font-size: 14px; color: var(--accent); }
+.contact-details { border-left: 1px solid var(--line); padding-left: 50px; align-self: center; }
+.contact-details .eyebrow { margin-bottom: 12px; }
+.contact-details .contact-phone { margin-top: 0; }
+.contact-community { display: inline-block; margin-top: 24px; font-size: 13px; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+.contact-community:hover { color: var(--accent); border-color: var(--accent); }
+@media (max-width: 700px) { .contact-details { border-left: 0; border-top: 1px solid var(--line); padding: 28px 0 0; } }
 @media (max-width: 1050px) { .work-photo { height: 300px; } }
 @media (max-width: 700px) {
   .work-photo { height: 420px; }
@@ -121,7 +131,7 @@ body.viewer-open { overflow: hidden; }
   <header class="header wrap">
     <a class="brand" href="#" aria-label="Мир ступеней, на главную"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSI+CiAgPGcgc3Ryb2tlPSIjZTVjNjg4IiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIj4KICAgIDxwYXRoIGQ9Ik0zMCA4NkgxMlYzOEw0OCA4TDg0IDM4Vjg2SDUwIi8+CiAgICA8cGF0aCBkPSJNMTIgODZIMzBWNzNINDZWNjBINjJWNDdIODQiLz4KICA8L2c+Cjwvc3ZnPgo=" width="40" height="40" alt=""><span>МИР СТУПЕНЕЙ<small>ЛЕСТНИЦЫ · КЕМЕРОВО</small></span></a>
     <button class="menu-toggle" aria-expanded="false" aria-controls="navigation">Меню <span>＋</span></button>
-    <nav id="navigation" aria-label="Основная навигация"><a href="#approach">О нас</a><a href="#ideas">Лестницы</a><a href="#process">Как работаем</a><a class="nav-contact" href="#contact">Обсудить проект <span>↗</span></a></nav>
+    <nav id="navigation" aria-label="Основная навигация"><a href="#approach">О нас</a><a href="#ideas">Лестницы</a><a href="#process">Как работаем</a><a class="nav-contact" href="tel:+79960402972">+7 996 040-29-72</a></nav>
   </header>
   <main>
     <section class="hero wrap">
@@ -195,9 +205,23 @@ body.viewer-open { overflow: hidden; }
     </section>
     <section id="process" class="section wrap process"><div class="section-heading"><div><p class="eyebrow">03 — От идеи к результату</p><h2>Ваша идея<br><em>обретает форму.</em></h2></div><p>Сначала знакомимся с задачей.<br>Затем договариваемся о деталях.</p></div><ol class="steps"><li><span>01</span><h3>Обсуждаем</h3><p>Расскажите о доме, пожеланиях и стиле. Фотография помещения или пример помогут начать разговор.</p></li><li><span>02</span><h3>Прорабатываем</h3><p>Уточняем размеры, конструкцию, материалы и отделку. Согласовываем стоимость и сроки.</p></li><li><span>03</span><h3>Изготавливаем</h3><p>После согласования проекта переходим к изготовлению лестницы по выбранным параметрам.</p></li><li><span>04</span><h3>Завершаем</h3><p>Порядок доставки и монтажа согласуем заранее, с учётом готовности вашего дома.</p></li></ol></section>
     <section class="faq section wrap"><p class="eyebrow">Полезно знать</p><div><details><summary>Что нужно для первого расчёта?<span>＋</span></summary><p>Подготовьте примерную высоту между этажами, размеры проёма и фотографии помещения. Если есть понравившаяся лестница, сохраните её фото. Точный расчёт потребует уточнения размеров и материалов.</p></details><details><summary>Можно ли прийти со своей идеей?<span>＋</span></summary><p>Да. Референсы, эскизы и фотографии интерьера помогут понять ваши пожелания. Возможность реализации конкретного решения обсудим индивидуально.</p></details><details><summary>От чего зависят стоимость и сроки?<span>＋</span></summary><p>От размеров, конструкции, выбранных материалов, ограждения и отделки. Стоимость и сроки определяются после обсуждения проекта.</p></details></div></section>
-    <section id="contact" class="contact"><div class="wrap contact-grid"><div><p class="eyebrow">Давайте начнём с вашей идеи</p><h2>Следующая ступень —<br><em>ваша.</em></h2><p>Новый дом или обновление интерьера?<br>Подготовьте несколько деталей о вашей лестнице.</p><span class="location">↗ &nbsp; Кемерово</span></div><div class="brief"><h3>Небольшой бриф для начала</h3><p>Соберите пожелания в удобный текст для обсуждения.</p><form id="brief-form"><label for="place">Где будет лестница?</label><select id="place" name="place"><option>В частном доме</option><option>На даче</option><option>В другом помещении</option></select><label for="wish">Ваши пожелания</label><textarea id="wish" name="wish" rows="3" maxlength="1500" placeholder="Размеры, материалы или идея…"></textarea><button class="button light" type="submit">Подготовить описание <span>↗</span></button></form><div id="brief-result" hidden><label for="brief-text">Описание вашего проекта</label><textarea id="brief-text" rows="6" readonly></textarea><button id="copy-brief" class="copy-button" type="button">Скопировать описание</button><p id="copy-status" role="status"></p></div><p class="contact-note">Контактный телефон скоро появится. Этот бриф не отправляет заявку — текст можно сохранить для разговора.</p></div></div></section>
+    <section id="contact" class="contact">
+      <div class="wrap contact-grid">
+        <div>
+          <p class="eyebrow">Давайте начнём с вашей идеи</p>
+          <h2>Следующая ступень —<br><em>ваша.</em></h2>
+          <p>По всем вопросам звоните — обсудим вашу лестницу<br>и ответим на вопросы.</p>
+        </div>
+        <div class="contact-details">
+          <p class="eyebrow">Будем рады вашему звонку</p>
+          <a class="contact-phone" href="tel:+79960402972">+7 996 040-29-72</a>
+          <span class="location">Кемерово</span>
+          <a class="contact-community" href="https://vk.ru/mirstupeney" target="_blank" rel="noopener noreferrer">Наше сообщество ВКонтакте</a>
+        </div>
+      </div>
+    </section>
   </main>
-  <footer class="wrap footer"><a class="brand" href="#"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSI+CiAgPGcgc3Ryb2tlPSIjZTVjNjg4IiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIj4KICAgIDxwYXRoIGQ9Ik0zMCA4NkgxMlYzOEw0OCA4TDg0IDM4Vjg2SDUwIi8+CiAgICA8cGF0aCBkPSJNMTIgODZIMzBWNzNINDZWNjBINjJWNDdIODQiLz4KICA8L2c+Cjwvc3ZnPgo=" width="32" height="32" alt=""><span>МИР СТУПЕНЕЙ<small>ЛЕСТНИЦЫ · КЕМЕРОВО</small></span></a><span>Продумано до последней ступени.</span><a href="#">Наверх ↑</a></footer>
+  <footer class="wrap footer"><a class="brand" href="#"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSI+CiAgPGcgc3Ryb2tlPSIjZTVjNjg4IiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIj4KICAgIDxwYXRoIGQ9Ik0zMCA4NkgxMlYzOEw0OCA4TDg0IDM4Vjg2SDUwIi8+CiAgICA8cGF0aCBkPSJNMTIgODZIMzBWNzNINDZWNjBINjJWNDdIODQiLz4KICA8L2c+Cjwvc3ZnPgo=" width="32" height="32" alt=""><span>МИР СТУПЕНЕЙ<small>ЛЕСТНИЦЫ · КЕМЕРОВО</small></span></a><a class="footer-phone" href="tel:+79960402972">+7 996 040-29-72</a><span>Продумано до последней ступени.</span><a href="#">Наверх ↑</a></footer>
   <dialog id="work-viewer" class="work-viewer" aria-labelledby="work-title">
     <div class="viewer-header"><h2 id="work-title"></h2><form method="dialog"><button class="viewer-close" aria-label="Закрыть фотографию">×</button></form></div>
     <img id="work-image" alt="">
@@ -224,28 +248,6 @@ document.addEventListener('keydown', (event) => {
     menu.focus();
   }
 });
-document.querySelector('#brief-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const place = document.querySelector('#place').value;
-  const wish = document.querySelector('#wish').value.trim();
-  document.querySelector('#brief-text').value = `Здравствуйте! Хочу обсудить изготовление лестницы в «Мире ступеней».\nГород: Кемерово.\nРасположение: ${place.toLowerCase()}.\n${wish ? `Пожелания: ${wish}` : 'Хочу обсудить варианты конструкции и материалов.'}`;
-  document.querySelector('#brief-result').hidden = false;
-  document.querySelector('#copy-status').textContent = '';
-  document.querySelector('#brief-text').focus();
-});
-document.querySelector('#copy-brief').addEventListener('click', async () => {
-  const field = document.querySelector('#brief-text');
-  const status = document.querySelector('#copy-status');
-  try {
-    await navigator.clipboard.writeText(field.value);
-    status.textContent = 'Описание скопировано.';
-  } catch {
-    field.focus();
-    field.select();
-    status.textContent = 'Текст выделен. Скопируйте его через меню устройства или Ctrl+C.';
-  }
-});
-
 const workLinks = [...document.querySelectorAll('[data-gallery]')];
 const viewer = document.querySelector('#work-viewer');
 if (viewer && typeof viewer.showModal === 'function') {
