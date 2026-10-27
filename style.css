@@ -52,8 +52,8 @@
 .ribbon i::before { content: '+'; font-size: 20px; }
 
 .hero-art{border:1px solid var(--line)}
-.hero-art>img{filter:saturate(.7) brightness(.9)}
-.art-label{color:#303c2d}
+.hero-art>img{object-position:50% 45%}
+.art-label{color:var(--ink);background:#123b35db;padding:7px 10px;font-size:10px;letter-spacing:.5px;max-width:calc(100% - 50px)}
 
 .header .brand { font-size: 24px; gap: 16px; }
 .header .brand img { width: 56px; height: 56px; }
@@ -69,4 +69,32 @@
   .header .brand { font-size: 16px; gap: 10px; }
   .header .brand img { width: 46px; height: 46px; }
   .header .brand small { font-size: 9px; letter-spacing: 1.2px; margin-top: 6px; }
+}
+
+.work-photo { display: block; position: relative; height: 360px; overflow: hidden; background: var(--palette-contact); }
+.work-photo > img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
+.work-photo:hover > img { transform: scale(1.035); }
+.photo-hint { position: absolute; right: 14px; bottom: 14px; background: #123b35ed; color: var(--ink); padding: 7px 12px; font-size: 11px; }
+.cards { row-gap: 40px; }
+.work-viewer { width: min(1050px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 20px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); }
+.work-viewer::backdrop { background: #061813eb; }
+.viewer-header, .viewer-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.viewer-header { margin-bottom: 14px; }
+.viewer-header h2 { font-size: 25px; line-height: 1.25; letter-spacing: -.5px; }
+.viewer-header form { margin: 0; }
+.viewer-close { background: transparent; color: var(--ink); border: 1px solid var(--line); width: 44px; height: 44px; font-size: 26px; }
+#work-image { display: block; width: 100%; height: min(68dvh, 760px); object-fit: contain; background: var(--palette-contact); }
+.viewer-footer { margin-top: 14px; }
+.viewer-footer button { border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 10px 14px; font-size: 13px; min-height: 44px; }
+.viewer-footer button:hover, .viewer-close:hover { border-color: var(--accent); color: var(--accent); }
+#work-counter { margin: 0; font-size: 12px; text-align: center; color: var(--muted); }
+body.viewer-open { overflow: hidden; }
+@media (max-width: 1050px) { .work-photo { height: 300px; } }
+@media (max-width: 700px) {
+  .work-photo { height: 420px; }
+  .work-viewer { padding: 12px; }
+  .viewer-header h2 { font-size: 22px; }
+  .viewer-footer { gap: 8px; }
+  .viewer-footer button { padding: 10px; font-size: 12px; }
+  #work-counter { font-size: 11px; }
 }
