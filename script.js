@@ -21,10 +21,15 @@ document.addEventListener('keydown', (event) => {
 const workLinks = [...document.querySelectorAll('[data-gallery]')];
 const viewer = document.querySelector('#work-viewer');
 if (viewer && typeof viewer.showModal === 'function') {
-  const photos = workLinks.flatMap((link) => [
-    { src: link.href, alt: link.querySelector('img').alt, title: link.dataset.title, label: 'Общий вид' },
-    { src: link.dataset.detail, alt: link.dataset.detailAlt, title: link.dataset.title, label: 'Деталь проекта' },
-  ]);
+  const photos = [];
+  const starts = workLinks.map((link) => {
+    const start = photos.length;
+    photos.push({ src: link.href, alt: link.querySelector('img').alt, title: link.dataset.title,
+      label: link.hasAttribute('data-single') ? '' : 'Общий вид' });
+    if (link.dataset.detail) photos.push({ src: link.dataset.detail, alt: link.dataset.detailAlt,
+      title: link.dataset.title, label: 'Деталь проекта' });
+    return start;
+  });
   let currentPhoto = 0;
   let lastTrigger;
   function showPhoto(index) {
@@ -34,14 +39,14 @@ if (viewer && typeof viewer.showModal === 'function') {
     image.src = photo.src;
     image.alt = photo.alt;
     document.querySelector('#work-title').textContent = photo.title;
-    document.querySelector('#work-counter').textContent = `${currentPhoto + 1} / ${photos.length} · ${photo.label}`;
+    document.querySelector('#work-counter').textContent = `${currentPhoto + 1} / ${photos.length}${photo.label ? ' · ' + photo.label : ''}`;
   }
   workLinks.forEach((link, index) => {
     link.addEventListener('click', (event) => {
       if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       lastTrigger = link;
-      showPhoto(index * 2);
+      showPhoto(starts[index]);
       viewer.showModal();
       document.body.classList.add('viewer-open');
     });
@@ -62,5 +67,32 @@ if (viewer && typeof viewer.showModal === 'function') {
   viewer.addEventListener('close', () => {
     document.body.classList.remove('viewer-open');
     lastTrigger?.focus({ preventScroll: true });
+  });
+  let touchStart;
+  const image = document.querySelector('#work-image');
+  image.addEventListener('touchstart', (event) => {
+    touchStart = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+  }, { passive: true });
+  image.addEventListener('touchend', (event) => {
+    if (!touchStart || event.changedTouches.length !== 1) return;
+    const dx = event.changedTouches[0].clientX - touchStart.x;
+    const dy = event.changedTouches[0].clientY - touchStart.y;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) showPhoto(currentPhoto + (dx < 0 ? 1 : -1));
+    touchStart = null;
+  }, { passive: true });
+  image.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
+}
+
+const filters = document.querySelector('.album-filters');
+if (filters) {
+  filters.hidden = false;
+  const cards = [...document.querySelectorAll('[data-album-status]')];
+  filters.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-album-filter]');
+    if (!button) return;
+    const value = button.dataset.albumFilter;
+    filters.querySelectorAll('button').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+    cards.forEach((card) => { card.hidden = value !== 'all' && card.dataset.albumStatus !== value; });
+    document.querySelector('#album-filter-status').textContent = `${button.textContent}. Показано объектов: ${cards.filter((card) => !card.hidden).length}.`;
   });
 }
