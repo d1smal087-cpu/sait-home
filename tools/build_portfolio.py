@@ -13,7 +13,10 @@ def plural(n, forms):
 
 def main():
     data = json.loads((ROOT / 'portfolio.json').read_text())
-    albums = data['albums']
+    settings = json.loads((ROOT / 'tools' / 'portfolio_settings.json').read_text())
+    albums = [album for album in data['albums'] if album['title'] not in settings['excluded_folders']]
+    first = {album_id: index for index, album_id in enumerate(settings['first_albums'])}
+    albums.sort(key=lambda album: (not album['photos'], first.get(album['id'], len(first))))
     source = (ROOT / 'index.html').read_text()
     header = re.search(r'  <header[\s\S]*?</header>', source)[0]
     footer = re.search(r'  <footer[\s\S]*?</footer>', source)[0]
@@ -53,7 +56,7 @@ def main():
     cards = []
     total = sum(len(a['photos']) for a in albums)
     ready = sum(bool(a['photos']) for a in albums)
-    for album in sorted(albums, key=lambda album: not album['photos']):
+    for album in albums:
         count = len(album['photos'])
         href = f'works/{album["id"]}.html'
         status = f'{count} {plural(count, ("фотография", "фотографии", "фотографий"))}' if count else 'Фотографии скоро'
@@ -100,6 +103,10 @@ def main():
     </div>
     <div class="portfolio-social"><div><h3>Обсудим вашу лестницу?</h3><p>Позвоните нам или посмотрите подробности работ в нашем сообществе.</p></div><a class="button" href="https://vk.ru/mirstupeney" target="_blank" rel="noopener noreferrer">Смотреть ВКонтакте <span>↗</span></a></div>'''
     (ROOT / 'works.html').write_text(page('Все работы', f'{len(albums)} объектов и {total} фотографий лестниц. Портфолио мастерской Мир ступеней в Кемерово.', content))
+    expected = {f'{album["id"]}.html' for album in albums}
+    for old_page in (ROOT / 'works').glob('object-*.html'):
+        if old_page.name not in expected:
+            old_page.unlink()
     print(f'Built works.html and {len(albums)} object pages')
 
 

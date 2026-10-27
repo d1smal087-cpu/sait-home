@@ -66,10 +66,13 @@ def download(item):
 
 
 def main():
+    settings = json.loads((ROOT / 'tools' / 'portfolio_settings.json').read_text())
     folders = sorted((f for f in listing('/') if f['type'] == 'dir'), key=lambda f: f['name'].casefold())
     albums = []
     jobs = []
     for number, folder in enumerate(folders, 1):
+        if folder['name'] in settings['excluded_folders']:
+            continue
         queue = [folder['path']]
         files = []
         while queue:
