@@ -1,4 +1,7 @@
 {
   "excluded_folders": ["Винтовая Жур горы"],
-  "first_albums": ["object-05", "object-18", "object-25", "object-16"]
+  "first_albums": ["object-05", "object-18", "object-25", "object-16"],
+  "hide_empty_albums": true,
+  "cover_indices": {"object-07": 32},
+  "contain_cover_albums": ["object-07"]
 }

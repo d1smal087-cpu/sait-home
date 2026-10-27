@@ -81,6 +81,8 @@ def main():
             queue.extend(f['path'] for f in items if f['type'] == 'dir')
         photos = sorted((f for f in files if f.get('mime_type', '').startswith('image/') and f.get('preview')),
                         key=lambda f: f['path'])
+        if settings['hide_empty_albums'] and not photos:
+            continue
         album = dict(id=f'object-{number:02}', title=folder['name'], photos=[None] * len(photos),
                      videos=sum(f.get('mime_type', '').startswith('video/') for f in files))
         albums.append(album)

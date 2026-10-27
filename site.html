@@ -145,7 +145,9 @@ body.viewer-open { overflow: hidden; }
 .album-link { display: block; height: 100%; }
 .album-cover { position: relative; height: 300px; background: var(--palette-contact); overflow: hidden; }
 .album-cover > img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.album-cover-contain > img { object-fit: contain; }
 .album-link:hover .album-cover > img { transform: scale(1.035); }
+.album-link:hover .album-cover-contain > img { transform: none; }
 .album-count { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
 .album-placeholder { height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 18px; color: var(--muted); font-size: 13px; }
 .album-placeholder img { opacity: .65; }
@@ -266,10 +268,6 @@ body.viewer-open { overflow: hidden; }
         </div>
         <p class="gallery-note">Нажмите на фотографию, чтобы рассмотреть лестницу и детали проекта.</p>
         <div class="all-works-link"><div><h3>Все объекты — в одном месте</h3><p>Отдельные альбомы наших работ: общий вид, разные ракурсы и детали каждой лестницы.</p></div><a class="button" href="works.html">Все работы <span aria-hidden="true">↗</span></a></div>
-        <div class="portfolio-social">
-          <div><h3>Ещё больше наших работ</h3><p>Полные подборки фотографий и подробности проектов — в нашем сообществе ВКонтакте.</p></div>
-          <a class="button" href="https://vk.ru/mirstupeney" target="_blank" rel="noopener noreferrer" aria-label="Смотреть ВКонтакте — в новой вкладке">Смотреть ВКонтакте <span aria-hidden="true">↗</span></a>
-        </div>
       </div>
     </section>
     <section id="process" class="section wrap process"><div class="section-heading"><div><p class="eyebrow">03 — От идеи к результату</p><h2>Ваша идея<br><em>обретает форму.</em></h2></div><p>Сначала знакомимся с задачей.<br>Затем договариваемся о деталях.</p></div><ol class="steps"><li><span>01</span><h3>Обсуждаем</h3><p>Расскажите о доме, пожеланиях и стиле. Фотография помещения или пример помогут начать разговор.</p></li><li><span>02</span><h3>Прорабатываем</h3><p>Уточняем размеры, конструкцию, материалы и отделку. Согласовываем стоимость и сроки.</p></li><li><span>03</span><h3>Изготавливаем</h3><p>После согласования проекта переходим к изготовлению лестницы по выбранным параметрам.</p></li><li><span>04</span><h3>Завершаем</h3><p>Порядок доставки и монтажа согласуем заранее, с учётом готовности вашего дома.</p></li></ol></section>
@@ -380,20 +378,6 @@ if (viewer && typeof viewer.showModal === 'function') {
     touchStart = null;
   }, { passive: true });
   image.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
-}
-
-const filters = document.querySelector('.album-filters');
-if (filters) {
-  filters.hidden = false;
-  const cards = [...document.querySelectorAll('[data-album-status]')];
-  filters.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-album-filter]');
-    if (!button) return;
-    const value = button.dataset.albumFilter;
-    filters.querySelectorAll('button').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
-    cards.forEach((card) => { card.hidden = value !== 'all' && card.dataset.albumStatus !== value; });
-    document.querySelector('#album-filter-status').textContent = `${button.textContent}. Показано объектов: ${cards.filter((card) => !card.hidden).length}.`;
-  });
 }
 
 </script>

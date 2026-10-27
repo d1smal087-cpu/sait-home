@@ -14,7 +14,8 @@ def plural(n, forms):
 def main():
     data = json.loads((ROOT / 'portfolio.json').read_text())
     settings = json.loads((ROOT / 'tools' / 'portfolio_settings.json').read_text())
-    albums = [album for album in data['albums'] if album['title'] not in settings['excluded_folders']]
+    albums = [album for album in data['albums'] if album['title'] not in settings['excluded_folders']
+              and (album['photos'] or not settings['hide_empty_albums'])]
     first = {album_id: index for index, album_id in enumerate(settings['first_albums'])}
     albums.sort(key=lambda album: (not album['photos'], first.get(album['id'], len(first))))
     source = (ROOT / 'index.html').read_text()
@@ -55,7 +56,6 @@ def main():
 
     cards = []
     total = sum(len(a['photos']) for a in albums)
-    ready = sum(bool(a['photos']) for a in albums)
     for album in albums:
         count = len(album['photos'])
         href = f'works/{album["id"]}.html'
@@ -64,13 +64,15 @@ def main():
             # Stable editorial covers for the previously selected objects.
             cover_indices = {'Виталий Жур Гор': 9, 'Павел СНТ Метал': 2, 'Денис Бульвар': 35,
                              'Юрий МП': 40, 'Никита ЛП': 25, 'Яшкино': 0}
-            cover = album['photos'][min(cover_indices.get(album['title'], 0), count - 1)]
+            cover_index = settings['cover_indices'].get(album['id'], cover_indices.get(album['title'], 0))
+            cover = album['photos'][min(cover_index, count - 1)]
             art = f'<img src="{cover["thumb"]}" alt="Один из наших проектов лестницы" loading="lazy" decoding="async" width="{cover["width"]}" height="{cover["height"]}">'
         else:
             art = '<span class="album-placeholder"><img src="assets/mark.svg" width="64" height="64" alt=""><span>Фотографии скоро</span></span>'
-        cards.append(f'''      <article class="card album-card" data-album-status="{'photos' if count else 'pending'}">
+        cover_class = 'album-cover album-cover-contain' if album['id'] in settings['contain_cover_albums'] else 'album-cover'
+        cards.append(f'''      <article class="card album-card">
         <a class="album-link" href="{href}" aria-label="Открыть альбом: {status}">
-          <div class="album-cover">{art}<span class="photo-hint">{'Смотреть объект' if count else 'Об объекте'}</span></div>
+          <div class="{cover_class}">{art}<span class="photo-hint">{'Смотреть объект' if count else 'Об объекте'}</span></div>
           <p class="album-count">{status}</p>
         </a>
       </article>''')
@@ -92,16 +94,9 @@ def main():
         (ROOT / 'works' / f'{album["id"]}.html').write_text(page('Фотографии объекта', f'{status}. Изготовление лестниц в Кемерово — Мир ступеней.', content, nested=True, gallery=bool(count)))
     content = f'''    <div class="breadcrumbs"><a href="index.html">← На главную</a></div>
     <div class="portfolio-heading"><p class="eyebrow">Мир ступеней · портфолио</p><h1>Все наши <em>работы.</em></h1><p>{len(albums)} объектов · {total} фотографий. У каждого объекта — свой альбом.</p></div>
-    <div class="album-filters" role="group" aria-label="Показать объекты" hidden>
-      <button type="button" data-album-filter="all" aria-pressed="true">Все объекты · {len(albums)}</button>
-      <button type="button" data-album-filter="photos" aria-pressed="false">С фотографиями · {ready}</button>
-      <button type="button" data-album-filter="pending" aria-pressed="false">Ожидают фото · {len(albums) - ready}</button>
-    </div>
-    <p id="album-filter-status" class="sr-only" role="status"></p>
     <div class="cards album-cards">
 {chr(10).join(cards)}
-    </div>
-    <div class="portfolio-social"><div><h3>Обсудим вашу лестницу?</h3><p>Позвоните нам или посмотрите подробности работ в нашем сообществе.</p></div><a class="button" href="https://vk.ru/mirstupeney" target="_blank" rel="noopener noreferrer">Смотреть ВКонтакте <span>↗</span></a></div>'''
+    </div>'''
     (ROOT / 'works.html').write_text(page('Все работы', f'{len(albums)} объектов и {total} фотографий лестниц. Портфолио мастерской Мир ступеней в Кемерово.', content))
     expected = {f'{album["id"]}.html' for album in albums}
     for old_page in (ROOT / 'works').glob('object-*.html'):

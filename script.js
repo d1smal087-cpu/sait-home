@@ -82,17 +82,3 @@ if (viewer && typeof viewer.showModal === 'function') {
   }, { passive: true });
   image.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
 }
-
-const filters = document.querySelector('.album-filters');
-if (filters) {
-  filters.hidden = false;
-  const cards = [...document.querySelectorAll('[data-album-status]')];
-  filters.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-album-filter]');
-    if (!button) return;
-    const value = button.dataset.albumFilter;
-    filters.querySelectorAll('button').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
-    cards.forEach((card) => { card.hidden = value !== 'all' && card.dataset.albumStatus !== value; });
-    document.querySelector('#album-filter-status').textContent = `${button.textContent}. Показано объектов: ${cards.filter((card) => !card.hidden).length}.`;
-  });
-}
