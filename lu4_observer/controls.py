@@ -110,6 +110,32 @@ def pressed_modifiers(get_state):
     return [name for name, key in MODIFIER_KEYS.items() if get_state(key) & 0x8000]
 
 
+def spoil_click_position(bounds, position):
+    x, y, w, h = bounds
+    if w != 1600 or h not in (837, 838):
+        raise RuntimeError("Mouse test requires the verified 1600x837/838 client layout.")
+    px, py = position
+    # Small rectangle around the Spoil icon in the latest supplied layout.
+    if not (x + 0.298*w <= px <= x + 0.320*w and y + 0.908*h <= py <= y + 0.947*h):
+        raise RuntimeError("Place the cursor over the orange Spoil icon (first button in the row marked 1).")
+    return px, py
+
+
+def tap_mouse(check_position, send, sleep=time.sleep):
+    check_position()
+    down, up = INPUT(), INPUT()
+    down.type = up.type = 0
+    down.mi = MOUSEINPUT(0, 0, 0, 0x0002, 0, 0)
+    up.mi = MOUSEINPUT(0, 0, 0, 0x0004, 0, 0)
+    if send(down) != 1:
+        raise RuntimeError("Windows did not accept mouse down")
+    try:
+        sleep(0.08)
+    finally:
+        if send(up) != 1:
+            raise RuntimeError("Windows did not accept mouse up")
+
+
 class RECT32(ctypes.Structure):
     _fields_ = [("left", LONG), ("top", LONG), ("right", LONG), ("bottom", LONG)]
 
@@ -197,11 +223,11 @@ def main(argv=None) -> int:
     parser.add_argument("--key-mode", choices=("virtual", "scan"), default="virtual")
     parser.add_argument("--hold-ms", type=int, choices=range(30, 1001), default=300, metavar="30..1000")
     parser.add_argument("--one-cycle", action="store_true", help="One manually selected mob, then stop")
-    parser.add_argument("--probe-action", choices=("next_target", "spoil"), default="next_target")
+    parser.add_argument("--probe-action", choices=("next_target", "spoil", "spoil_click"), default="next_target")
     args = parser.parse_args(argv)
     if args.one_cycle:
         args.countdown, args.key_mode, args.hold_ms = 10, "scan", 300
-    elif args.probe_action == "spoil":
+    elif args.probe_action in ("spoil", "spoil_click"):
         args.countdown, args.key_mode, args.hold_ms = 10, "scan", 300
     if sys.platform != "win32":
         print("The input probe requires Windows. No input was sent.")
@@ -230,6 +256,12 @@ def main(argv=None) -> int:
         api.GetAsyncKeyState.restype = ctypes.c_int16
         api.GetGUIThreadInfo.argtypes = [DWORD, ctypes.POINTER(GUITHREADINFO)]
         api.GetGUIThreadInfo.restype = ctypes.c_int32
+        api.GetCursorPos.argtypes = [ctypes.POINTER(wintypes.POINT)]
+        api.GetCursorPos.restype = wintypes.BOOL
+        api.WindowFromPoint.argtypes = [wintypes.POINT]
+        api.WindowFromPoint.restype = wintypes.HWND
+        api.GetAncestor.argtypes = [wintypes.HWND, ctypes.c_uint]
+        api.GetAncestor.restype = wintypes.HWND
         folder = ROOT / "runs"
         folder.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -283,7 +315,7 @@ def main(argv=None) -> int:
             record("ready", mode="single_cycle" if args.one_cycle else ("countdown" if args.countdown else "hotkey"), delay=args.countdown,
                    key_mode=args.key_mode, hold_ms=args.hold_ms, action=args.probe_action,
                    uses_ocr=args.one_cycle, **elevation)
-            if (args.one_cycle or args.probe_action == "spoil") and elevation["probe_elevated"] is not True:
+            if (args.one_cycle or args.probe_action in ("spoil", "spoil_click")) and elevation["probe_elevated"] is not True:
                 raise RuntimeError("Run this test BAT as administrator, matching the verified LU4 setup.")
             print(f"LU4 input probe {__version__}", flush=True)
             print(f"Input mode: {args.key_mode}, hold: {args.hold_ms} ms, elevated: {elevation['probe_elevated']}", flush=True)
@@ -292,6 +324,10 @@ def main(argv=None) -> int:
                 print("ONE CYCLE: select a nearby living, undamaged Ghoul or Dead Seeker.", flush=True)
                 print("Keep LU4 active. Start in 10 seconds. F9 stops; Escape cancels the target while LU4 is active.", flush=True)
                 print("Attempts: Spoil (1), attack (F1), Sweep (2), pickup (5). No next-target search or return.", flush=True)
+            elif args.probe_action == "spoil_click":
+                print("SPOIL CLICK: choose a nearby living mob, close chat and keep the target selected.", flush=True)
+                print("Hover over the orange Spoil icon. One left click in 10 seconds. Keep the mouse still.", flush=True)
+                print("No OCR, no attack. Escape follows after 3 seconds. F9 cancels.", flush=True)
             elif args.probe_action == "spoil":
                 print("SPOIL ONLY: choose a nearby living mob, close chat, keep the target selected.", flush=True)
                 print("One top-row 1 in 10 seconds; Escape after 3 seconds. No OCR, no attack. F9 cancels.", flush=True)
@@ -351,10 +387,36 @@ def main(argv=None) -> int:
                         record("active_game_found", handle=window.handle)
                         if args.one_cycle:
                             return execute_one_cycle(capture, window, settings, send, poll_stop, events, record)
-                        if args.probe_action == "spoil":
+                        if args.probe_action in ("spoil", "spoil_click"):
                             try:
-                                record("probe_action", action="spoil", uses_ocr=False)
-                                tap_action("spoil", lambda: capture.bounds(window.handle), send, cancellable_hold)
+                                record("probe_action", action=args.probe_action, uses_ocr=False)
+                                if args.probe_action == "spoil_click":
+                                    def check_mouse():
+                                        bounds = capture.bounds(window.handle)
+                                        position = wintypes.POINT()
+                                        if not api.GetCursorPos(ctypes.byref(position)):
+                                            raise ctypes.WinError(ctypes.get_last_error())
+                                        spoil_click_position(bounds, (position.x, position.y))
+                                        hit = api.WindowFromPoint(position)
+                                        root = api.GetAncestor(hit, 2) if hit else None
+                                        if root != window.handle:
+                                            raise RuntimeError("The cursor is covered by a different window")
+                                        modifiers = pressed_modifiers(api.GetAsyncKeyState)
+                                        record("mouse_position", x=position.x, y=position.y, modifiers=modifiers)
+                                        if modifiers:
+                                            raise RuntimeError("Release modifier keys before mouse test")
+                                    def send_mouse(event):
+                                        ctypes.set_last_error(0)
+                                        accepted = int(api.SendInput(1, ctypes.byref(event), ctypes.sizeof(INPUT)))
+                                        error = ctypes.get_last_error()
+                                        try:
+                                            record("mouse_down" if event.mi.dwFlags == 2 else "mouse_up", accepted=accepted, windows_error=error)
+                                        except OSError:
+                                            pass  # Never interrupt the down/up pair because of logging.
+                                        return accepted
+                                    tap_mouse(check_mouse, send_mouse, cancellable_hold)
+                                else:
+                                    tap_action("spoil", lambda: capture.bounds(window.handle), send, cancellable_hold)
                                 cancellable_hold(3.0)
                                 record("probe_finished", action="spoil", result_not_inferred=True)
                             finally:
