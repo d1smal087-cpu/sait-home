@@ -7,6 +7,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+LEGACY_BINDINGS = {"attack": "F1", "next_target": "F2", "spoil": "1", "sweep": "2", "pickup": "5"}
+FUNCTION_BINDINGS = {"attack": "F1", "next_target": "F2", "spoil": "F3", "sweep": "F4", "pickup": "F5", "reserved": "F6"}
 LEGACY_JOURNAL_REGION = (0.5613, 0.7088, 0.8031, 0.9582)
 LEFT_JOURNAL_REGION = (0.0025, 0.41051, 0.2694, 0.6838)
 OCR_REGIONS = ("target_name", "target_hp", "player_hp", "player_mp")
@@ -42,6 +44,8 @@ class Settings:
         # region, calibration, and the on-disk file until the user saves settings.
         if tuple(settings.regions["journal"]) == LEGACY_JOURNAL_REGION:
             settings.regions["journal"] = list(LEFT_JOURNAL_REGION)
+        if settings.game_key_bindings == LEGACY_BINDINGS:
+            settings.game_key_bindings = dict(FUNCTION_BINDINGS)
         return settings
 
     def validate(self) -> None:

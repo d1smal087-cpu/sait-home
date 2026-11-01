@@ -21,7 +21,7 @@ class InputProbeTests(unittest.TestCase):
         self.assertEqual(ctypes.sizeof(GUITHREADINFO), 72 if ctypes.sizeof(ctypes.c_void_p) == 8 else 48)
 
     def test_action_scan_bindings_and_release(self):
-        for action, scan in {"spoil": 2, "attack": 59, "sweep": 3, "pickup": 6, "cancel": 1}.items():
+        for action, scan in {"spoil": 61, "attack": 59, "next_target": 60, "sweep": 62, "pickup": 63, "cancel": 1}.items():
             with self.subTest(action=action):
                 calls, held = [], []
                 tap_action(action, lambda: None, lambda e: calls.append(e) or 1, held.append)

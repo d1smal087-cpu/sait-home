@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 from . import __version__
 from .capture import CaptureUnavailable, WindowsCapture, enable_dpi_awareness
-from .config import ROOT, Settings
+from .config import ROOT, Settings, FUNCTION_BINDINGS
 
 
 # Use fixed-width Win32 types so the INPUT layout can also be checked on Linux.
@@ -82,7 +82,13 @@ def tap_f2(check_foreground, send, sleep=time.sleep, *, key_mode="scan", hold_se
             raise RuntimeError("Windows did not accept the F2 keyup event.")
 
 
-ACTION_SCANS = {"spoil": 0x02, "attack": 0x3B, "sweep": 0x03, "pickup": 0x06, "cancel": 0x01}
+ACTION_SCANS = {"attack": 0x3B, "next_target": 0x3C, "spoil": 0x3D, "sweep": 0x3E, "pickup": 0x3F, "cancel": 0x01}
+
+
+def require_function_bindings(settings, actions):
+    for action in actions:
+        if settings.game_key_bindings.get(action) != FUNCTION_BINDINGS[action]:
+            raise RuntimeError(f"Configure {action} as {FUNCTION_BINDINGS[action]} in config.json and in LU4.")
 
 
 def tap_action(action, check_foreground, send, sleep=time.sleep):
@@ -238,6 +244,10 @@ def main(argv=None) -> int:
     try:
         enable_dpi_awareness()
         settings = Settings.load()
+        if args.probe_action == "spoil_click":
+            raise RuntimeError("Old mouse layout test disabled. Bind Spoil to F3 and use test_spoil_f3.bat.")
+        if args.probe_action == "spoil":
+            require_function_bindings(settings, ["spoil"])
         capture = WindowsCapture()
         api = capture.api
         api.SendInput.argtypes = [ctypes.c_uint, ctypes.POINTER(INPUT), ctypes.c_int]
@@ -315,7 +325,7 @@ def main(argv=None) -> int:
             record("ready", mode="single_cycle" if args.one_cycle else ("countdown" if args.countdown else "hotkey"), delay=args.countdown,
                    key_mode=args.key_mode, hold_ms=args.hold_ms, action=args.probe_action,
                    input_kind="mouse" if args.probe_action == "spoil_click" else "keyboard",
-                   uses_ocr=args.one_cycle, **elevation)
+                   uses_ocr=args.one_cycle, bindings=settings.game_key_bindings, **elevation)
             if (args.one_cycle or args.probe_action in ("spoil", "spoil_click")) and elevation["probe_elevated"] is not True:
                 raise RuntimeError("Run this test BAT as administrator, matching the verified LU4 setup.")
             print(f"LU4 input probe {__version__}", flush=True)
@@ -324,14 +334,14 @@ def main(argv=None) -> int:
             if args.one_cycle:
                 print("ONE CYCLE: select a nearby living, undamaged Ghoul or Dead Seeker.", flush=True)
                 print("Keep LU4 active. Start in 10 seconds. F9 stops; Escape cancels the target while LU4 is active.", flush=True)
-                print("Attempts: Spoil (1), attack (F1), Sweep (2), pickup (5). No next-target search or return.", flush=True)
+                print("Attempts: Spoil (F3), attack (F1), Sweep (F4), pickup (F5). No next-target search or return.", flush=True)
             elif args.probe_action == "spoil_click":
                 print("SPOIL CLICK: choose a nearby living mob, close chat and keep the target selected.", flush=True)
                 print("Hover over the orange Spoil icon. One left click in 10 seconds. Keep the mouse still.", flush=True)
                 print("No OCR, no attack. Escape follows after 3 seconds. F9 cancels.", flush=True)
             elif args.probe_action == "spoil":
-                print("SPOIL ONLY: choose a nearby living mob, close chat, keep the target selected.", flush=True)
-                print("One top-row 1 in 10 seconds; Escape after 3 seconds. No OCR, no attack. F9 cancels.", flush=True)
+                print("SPOIL F3 ONLY: bind Spoil to F3 IN THE GAME first. Choose a nearby mob and close chat.", flush=True)
+                print("One F3 in 10 seconds; Escape after 3 seconds. No OCR, no attack. F9 cancels.", flush=True)
             elif args.countdown:
                 print("Switch to LU4. Close chat input and remove the current target with Esc.", flush=True)
                 print(f"COUNTDOWN: switch to LU4 within {args.countdown} seconds. F9 cancels.", flush=True)
@@ -390,7 +400,8 @@ def main(argv=None) -> int:
                             return execute_one_cycle(capture, window, settings, send, poll_stop, events, record)
                         if args.probe_action in ("spoil", "spoil_click"):
                             try:
-                                record("probe_action", action=args.probe_action, uses_ocr=False)
+                                record("probe_action", action=args.probe_action,
+                                       bound_key=settings.game_key_bindings.get("spoil"), uses_ocr=False)
                                 if args.probe_action == "spoil_click":
                                     def check_mouse():
                                         bounds = capture.bounds(window.handle)
@@ -467,9 +478,7 @@ def execute_one_cycle(capture, window, settings, send, poll_stop, events, record
     from .recognition import Analyzer, LocalOCR
     from .single_cycle import CycleStopped, run_one_cycle
 
-    expected = {"attack": "F1", "spoil": "1", "sweep": "2", "pickup": "5"}
-    if any(settings.game_key_bindings.get(k) != v for k, v in expected.items()):
-        raise RuntimeError("The one-cycle test requires F1 attack, 1 Spoil, 2 Sweep, 5 pickup in config.json.")
+    require_function_bindings(settings, ["attack", "spoil", "sweep", "pickup"])
     analyzer = Analyzer(LocalOCR())
     latest_frame = latest_value = None
     attempted = False
@@ -496,7 +505,7 @@ def execute_one_cycle(capture, window, settings, send, poll_stop, events, record
     def press(action):
         nonlocal attempted
         check_stop()
-        record("cycle_action", action=action)
+        record("cycle_action", action=action, bound_key=settings.game_key_bindings.get(action))
         # Set before dispatch so cleanup also covers interrupted key holds.
         attempted = True
         tap_action(action, lambda: capture.bounds(window.handle), send, wait)

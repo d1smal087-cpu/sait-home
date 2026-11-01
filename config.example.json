@@ -16,8 +16,9 @@
   "game_key_bindings": {
     "attack": "F1",
     "next_target": "F2",
-    "spoil": "1",
-    "sweep": "2",
-    "pickup": "5"
+    "spoil": "F3",
+    "sweep": "F4",
+    "pickup": "F5",
+    "reserved": "F6"
   }
 }
