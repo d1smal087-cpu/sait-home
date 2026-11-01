@@ -19,6 +19,8 @@ from .config import ROOT, Settings, FUNCTION_BINDINGS
 DWORD, WORD, LONG = ctypes.c_uint32, ctypes.c_uint16, ctypes.c_int32
 ULONG_PTR = ctypes.c_size_t
 SCANCODE, KEYUP, F2_SCAN = 0x0008, 0x0002, 0x003C
+UNICODE = 0x0004
+SPOIL_COMMAND = "/useskill Spoil"
 PROBE_ID, STOP_ID = 1701, 1702
 
 
@@ -107,6 +109,26 @@ def tap_scan(scan, check_foreground, send, sleep=time.sleep, hold_seconds=0.3):
     finally:
         if send(up) != 1:
             raise RuntimeError("Windows did not accept the action keyup")
+
+
+def send_spoil_command(check_foreground, send, sleep=time.sleep):
+    """Type one fixed command into an already open, empty chat, then submit."""
+    for char in SPOIL_COMMAND:
+        check_foreground()
+        down, up = INPUT(), INPUT()
+        down.type = up.type = 1
+        down.ki = KEYBDINPUT(0, ord(char), UNICODE, 0, 0)
+        up.ki = KEYBDINPUT(0, ord(char), UNICODE | KEYUP, 0, 0)
+        if send(down) != 1:
+            raise RuntimeError("Windows did not accept command text keydown")
+        try:
+            sleep(0.02)
+        finally:
+            if send(up) != 1:
+                raise RuntimeError("Windows did not accept command text keyup")
+        sleep(0.03)
+    sleep(0.3)
+    tap_scan(0x1C, check_foreground, send, sleep, 0.3)  # Enter, once
 
 
 MODIFIER_KEYS = {"SHIFT": 0x10, "CTRL": 0x11, "ALT": 0x12, "LWIN": 0x5B, "RWIN": 0x5C}
@@ -229,11 +251,11 @@ def main(argv=None) -> int:
     parser.add_argument("--key-mode", choices=("virtual", "scan"), default="virtual")
     parser.add_argument("--hold-ms", type=int, choices=range(30, 1001), default=300, metavar="30..1000")
     parser.add_argument("--one-cycle", action="store_true", help="One manually selected mob, then stop")
-    parser.add_argument("--probe-action", choices=("next_target", "spoil", "spoil_click"), default="next_target")
+    parser.add_argument("--probe-action", choices=("next_target", "spoil", "spoil_click", "spoil_command"), default="next_target")
     args = parser.parse_args(argv)
     if args.one_cycle:
         args.countdown, args.key_mode, args.hold_ms = 10, "scan", 300
-    elif args.probe_action in ("spoil", "spoil_click"):
+    elif args.probe_action in ("spoil", "spoil_click", "spoil_command"):
         args.countdown, args.key_mode, args.hold_ms = 10, "scan", 300
     if sys.platform != "win32":
         print("The input probe requires Windows. No input was sent.")
@@ -306,7 +328,8 @@ def main(argv=None) -> int:
             try:
                 record("keyup" if event.ki.dwFlags & KEYUP else "keydown", accepted=count,
                        scan=int(event.ki.wScan), virtual_key=int(event.ki.wVk),
-                       flags=int(event.ki.dwFlags), windows_error=error)
+                       flags=int(event.ki.dwFlags), windows_error=error,
+                       encoding="unicode" if event.ki.dwFlags & UNICODE else "key")
             except OSError as error:
                 print(f"Cannot write input log: {error}", flush=True)
             return count
@@ -324,9 +347,11 @@ def main(argv=None) -> int:
             elevation = probe_elevation()
             record("ready", mode="single_cycle" if args.one_cycle else ("countdown" if args.countdown else "hotkey"), delay=args.countdown,
                    key_mode=args.key_mode, hold_ms=args.hold_ms, action=args.probe_action,
-                   input_kind="mouse" if args.probe_action == "spoil_click" else "keyboard",
+                   input_kind=("chat_command" if args.probe_action == "spoil_command" else
+                               "mouse" if args.probe_action == "spoil_click" else "keyboard"),
+                   text_mode="unicode" if args.probe_action == "spoil_command" else None,
                    uses_ocr=args.one_cycle, bindings=settings.game_key_bindings, **elevation)
-            if (args.one_cycle or args.probe_action in ("spoil", "spoil_click")) and elevation["probe_elevated"] is not True:
+            if (args.one_cycle or args.probe_action in ("spoil", "spoil_click", "spoil_command")) and elevation["probe_elevated"] is not True:
                 raise RuntimeError("Run this test BAT as administrator, matching the verified LU4 setup.")
             print(f"LU4 input probe {__version__}", flush=True)
             print(f"Input mode: {args.key_mode}, hold: {args.hold_ms} ms, elevated: {elevation['probe_elevated']}", flush=True)
@@ -335,6 +360,10 @@ def main(argv=None) -> int:
                 print("ONE CYCLE: select a nearby living, undamaged Ghoul or Dead Seeker.", flush=True)
                 print("Keep LU4 active. Start in 10 seconds. F9 stops; Escape cancels the target while LU4 is active.", flush=True)
                 print("Attempts: Spoil (F3), attack (F1), Sweep (F4), pickup (F5). No next-target search or return.", flush=True)
+            elif args.probe_action == "spoil_command":
+                print("SPOIL CHAT COMMAND: select a nearby living mob that is not spoiled yet.", flush=True)
+                print("Within 10 seconds: switch to LU4 and OPEN THE EMPTY CHAT INPUT. Keep the target selected.", flush=True)
+                print("Types /useskill Spoil once using Unicode text, then presses Enter. No Escape or attack. F9 cancels.", flush=True)
             elif args.probe_action == "spoil_click":
                 print("SPOIL CLICK: choose a nearby living mob, close chat and keep the target selected.", flush=True)
                 print("Hover over the orange Spoil icon. One left click in 10 seconds. Keep the mouse still.", flush=True)
@@ -350,7 +379,7 @@ def main(argv=None) -> int:
                 print("The probe stays ready even if LU4 has not been opened yet.", flush=True)
                 print("F8: send F2 ONCE to the active LU4 window. F9: finish/cancel.", flush=True)
             if not args.one_cycle and args.probe_action == "next_target":
-                print("No attack, Spoil, Sweep, movement or pickup is sent.", flush=True)
+                print("Only F2 is sent. Its in-game action depends on your current LU4 binding.", flush=True)
             message = wintypes.MSG()
             used = False
             deadline = time.monotonic() + (args.countdown or 0)
@@ -398,6 +427,15 @@ def main(argv=None) -> int:
                         record("active_game_found", handle=window.handle)
                         if args.one_cycle:
                             return execute_one_cycle(capture, window, settings, send, poll_stop, events, record)
+                        if args.probe_action == "spoil_command":
+                            record("probe_action", action="spoil_command", command=SPOIL_COMMAND,
+                                   text_mode="unicode", requires_empty_open_chat=True, uses_ocr=False)
+                            send_spoil_command(lambda: capture.bounds(window.handle), send, cancellable_hold)
+                            record("command_events_sent", command=SPOIL_COMMAND, result_not_inferred=True)
+                            cancellable_hold(3.0)
+                            record("probe_finished", action="spoil_command", result_not_inferred=True)
+                            print(f"Command test ended. Report whether Spoil started, or text/error remained. Log: {log}", flush=True)
+                            return 0
                         if args.probe_action in ("spoil", "spoil_click"):
                             try:
                                 record("probe_action", action=args.probe_action,
@@ -452,7 +490,7 @@ def main(argv=None) -> int:
                         record("waiting_for_game", reason=str(error))
                         print(str(error), flush=True)
                         if args.countdown:
-                            print("Timer test ended without sending F2. See the log for window details.", flush=True)
+                            print("Timer test ended. See the log for input and window details.", flush=True)
                             return 1
                         continue
                     record("probe_finished")
