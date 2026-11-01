@@ -130,7 +130,7 @@ def tap_mouse(check_position, send, sleep=time.sleep):
     if send(down) != 1:
         raise RuntimeError("Windows did not accept mouse down")
     try:
-        sleep(0.08)
+        sleep(0.3)
     finally:
         if send(up) != 1:
             raise RuntimeError("Windows did not accept mouse up")
@@ -314,6 +314,7 @@ def main(argv=None) -> int:
             elevation = probe_elevation()
             record("ready", mode="single_cycle" if args.one_cycle else ("countdown" if args.countdown else "hotkey"), delay=args.countdown,
                    key_mode=args.key_mode, hold_ms=args.hold_ms, action=args.probe_action,
+                   input_kind="mouse" if args.probe_action == "spoil_click" else "keyboard",
                    uses_ocr=args.one_cycle, **elevation)
             if (args.one_cycle or args.probe_action in ("spoil", "spoil_click")) and elevation["probe_elevated"] is not True:
                 raise RuntimeError("Run this test BAT as administrator, matching the verified LU4 setup.")
@@ -409,8 +410,15 @@ def main(argv=None) -> int:
                                         ctypes.set_last_error(0)
                                         accepted = int(api.SendInput(1, ctypes.byref(event), ctypes.sizeof(INPUT)))
                                         error = ctypes.get_last_error()
+                                        now = time.monotonic()
+                                        actual_hold_ms = None
+                                        if event.mi.dwFlags == 2 and accepted == 1:
+                                            send_mouse.pressed_at = now
+                                        elif event.mi.dwFlags == 4 and hasattr(send_mouse, "pressed_at"):
+                                            actual_hold_ms = round((now - send_mouse.pressed_at) * 1000, 1)
                                         try:
-                                            record("mouse_down" if event.mi.dwFlags == 2 else "mouse_up", accepted=accepted, windows_error=error)
+                                            record("mouse_down" if event.mi.dwFlags == 2 else "mouse_up", accepted=accepted,
+                                                   windows_error=error, actual_hold_ms=actual_hold_ms)
                                         except OSError:
                                             pass  # Never interrupt the down/up pair because of logging.
                                         return accepted

@@ -15,7 +15,7 @@ class MouseProbeTests(unittest.TestCase):
         tap_mouse(lambda: None, lambda e: events.append(e) or 1, held.append)
         self.assertEqual([e.type for e in events], [0, 0])
         self.assertEqual([e.mi.dwFlags for e in events], [2, 4])
-        self.assertEqual(held, [0.08])
+        self.assertEqual(held, [0.3])
 
     def test_cancel_releases_mouse(self):
         events = []
