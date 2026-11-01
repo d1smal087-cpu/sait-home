@@ -45,11 +45,18 @@ class INPUT(ctypes.Structure):
     _fields_ = [("type", DWORD), ("data", INPUTUNION)]
 
 
+def scan_event(scan: int, release: bool = False) -> INPUT:
+    event = INPUT()
+    event.type = 1
+    event.ki = KEYBDINPUT(0, scan, SCANCODE | (KEYUP if release else 0), 0, 0)
+    return event
+
+
 def f2_event(release: bool = False, key_mode: str = "scan") -> INPUT:
     event = INPUT()
     event.type = 1  # INPUT_KEYBOARD
     if key_mode == "scan":
-        event.ki = KEYBDINPUT(0, F2_SCAN, SCANCODE | (KEYUP if release else 0), 0, 0)
+        return scan_event(F2_SCAN, release)
     elif key_mode == "virtual":
         event.ki = KEYBDINPUT(0x71, 0, KEYUP if release else 0, 0, 0)  # VK_F2
     else:
@@ -59,6 +66,8 @@ def f2_event(release: bool = False, key_mode: str = "scan") -> INPUT:
 
 def tap_f2(check_foreground, send, sleep=time.sleep, *, key_mode="scan", hold_seconds=0.08) -> None:
     """Check focus immediately before keydown and always release an accepted key."""
+    if key_mode == "scan":
+        return tap_scan(F2_SCAN, check_foreground, send, sleep, hold_seconds)
     if not math.isfinite(hold_seconds) or not 0.03 <= hold_seconds <= 1.0:
         raise ValueError("Key hold must be between 0.03 and 1 second")
     down, up = f2_event(key_mode=key_mode), f2_event(release=True, key_mode=key_mode)
@@ -77,19 +86,39 @@ ACTION_SCANS = {"spoil": 0x02, "attack": 0x3B, "sweep": 0x03, "pickup": 0x06, "c
 
 
 def tap_action(action, check_foreground, send, sleep=time.sleep):
-    scan = ACTION_SCANS[action]
+    return tap_scan(ACTION_SCANS[action], check_foreground, send, sleep, 0.3)
+
+
+def tap_scan(scan, check_foreground, send, sleep=time.sleep, hold_seconds=0.3):
+    if not math.isfinite(hold_seconds) or not 0.03 <= hold_seconds <= 1.0:
+        raise ValueError("Key hold must be between 0.03 and 1 second")
     check_foreground()
-    down, up = INPUT(), INPUT()
-    down.type = up.type = 1
-    down.ki = KEYBDINPUT(0, scan, SCANCODE, 0, 0)
-    up.ki = KEYBDINPUT(0, scan, SCANCODE | KEYUP, 0, 0)
+    down, up = scan_event(scan), scan_event(scan, True)
     if send(down) != 1:
         raise RuntimeError("Windows did not accept the action keydown")
     try:
-        sleep(0.3)
+        sleep(hold_seconds)
     finally:
         if send(up) != 1:
             raise RuntimeError("Windows did not accept the action keyup")
+
+
+MODIFIER_KEYS = {"SHIFT": 0x10, "CTRL": 0x11, "ALT": 0x12, "LWIN": 0x5B, "RWIN": 0x5C}
+
+
+def pressed_modifiers(get_state):
+    return [name for name, key in MODIFIER_KEYS.items() if get_state(key) & 0x8000]
+
+
+class RECT32(ctypes.Structure):
+    _fields_ = [("left", LONG), ("top", LONG), ("right", LONG), ("bottom", LONG)]
+
+
+class GUITHREADINFO(ctypes.Structure):
+    _fields_ = [("cbSize", DWORD), ("flags", DWORD), ("hwndActive", ctypes.c_void_p),
+                ("hwndFocus", ctypes.c_void_p), ("hwndCapture", ctypes.c_void_p),
+                ("hwndMenuOwner", ctypes.c_void_p), ("hwndMoveSize", ctypes.c_void_p),
+                ("hwndCaret", ctypes.c_void_p), ("rcCaret", RECT32)]
 
 
 def find_active_game(capture, prefix, report_windows=None):
@@ -168,8 +197,11 @@ def main(argv=None) -> int:
     parser.add_argument("--key-mode", choices=("virtual", "scan"), default="virtual")
     parser.add_argument("--hold-ms", type=int, choices=range(30, 1001), default=300, metavar="30..1000")
     parser.add_argument("--one-cycle", action="store_true", help="One manually selected mob, then stop")
+    parser.add_argument("--probe-action", choices=("next_target", "spoil"), default="next_target")
     args = parser.parse_args(argv)
     if args.one_cycle:
+        args.countdown, args.key_mode, args.hold_ms = 10, "scan", 300
+    elif args.probe_action == "spoil":
         args.countdown, args.key_mode, args.hold_ms = 10, "scan", 300
     if sys.platform != "win32":
         print("The input probe requires Windows. No input was sent.")
@@ -194,6 +226,10 @@ def main(argv=None) -> int:
         api.PeekMessageW.restype = wintypes.BOOL
         api.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
         api.GetClassNameW.restype = ctypes.c_int
+        api.GetAsyncKeyState.argtypes = [ctypes.c_int]
+        api.GetAsyncKeyState.restype = ctypes.c_int16
+        api.GetGUIThreadInfo.argtypes = [DWORD, ctypes.POINTER(GUITHREADINFO)]
+        api.GetGUIThreadInfo.restype = ctypes.c_int32
         folder = ROOT / "runs"
         folder.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -207,6 +243,19 @@ def main(argv=None) -> int:
                 stream.write(json.dumps(entry) + "\n")
 
         def send(event):
+            if not event.ki.dwFlags & KEYUP:
+                modifiers = pressed_modifiers(api.GetAsyncKeyState)
+                info = GUITHREADINFO()
+                info.cbSize = ctypes.sizeof(info)
+                has_info = bool(api.GetGUIThreadInfo(0, ctypes.byref(info)))
+                focus_class = ctypes.create_unicode_buffer(256)
+                if has_info and info.hwndFocus:
+                    api.GetClassNameW(info.hwndFocus, focus_class, len(focus_class))
+                record("keyboard_state", modifiers=modifiers, gui_info_available=has_info,
+                       focus_handle=int(info.hwndFocus or 0), focus_class=focus_class.value,
+                       active_handle=int(info.hwndActive or 0), gui_flags=int(info.flags))
+                if modifiers:
+                    raise RuntimeError("Release modifier keys and retry: " + ", ".join(modifiers))
             ctypes.set_last_error(0)
             count = int(api.SendInput(1, ctypes.byref(event), ctypes.sizeof(INPUT)))
             error = ctypes.get_last_error()
@@ -232,9 +281,10 @@ def main(argv=None) -> int:
         with probe_hotkeys(api, include_start=args.countdown is None):
             elevation = probe_elevation()
             record("ready", mode="single_cycle" if args.one_cycle else ("countdown" if args.countdown else "hotkey"), delay=args.countdown,
-                   key_mode=args.key_mode, hold_ms=args.hold_ms, **elevation)
-            if args.one_cycle and elevation["probe_elevated"] is not True:
-                raise RuntimeError("Run test_one_cycle.bat as administrator, matching the verified LU4 setup.")
+                   key_mode=args.key_mode, hold_ms=args.hold_ms, action=args.probe_action,
+                   uses_ocr=args.one_cycle, **elevation)
+            if (args.one_cycle or args.probe_action == "spoil") and elevation["probe_elevated"] is not True:
+                raise RuntimeError("Run this test BAT as administrator, matching the verified LU4 setup.")
             print(f"LU4 input probe {__version__}", flush=True)
             print(f"Input mode: {args.key_mode}, hold: {args.hold_ms} ms, elevated: {elevation['probe_elevated']}", flush=True)
             print(f"Log: {log}", flush=True)
@@ -242,6 +292,9 @@ def main(argv=None) -> int:
                 print("ONE CYCLE: select a nearby living, undamaged Ghoul or Dead Seeker.", flush=True)
                 print("Keep LU4 active. Start in 10 seconds. F9 stops; Escape cancels the target while LU4 is active.", flush=True)
                 print("Attempts: Spoil (1), attack (F1), Sweep (2), pickup (5). No next-target search or return.", flush=True)
+            elif args.probe_action == "spoil":
+                print("SPOIL ONLY: choose a nearby living mob, close chat, keep the target selected.", flush=True)
+                print("One top-row 1 in 10 seconds; Escape after 3 seconds. No OCR, no attack. F9 cancels.", flush=True)
             elif args.countdown:
                 print("Switch to LU4. Close chat input and remove the current target with Esc.", flush=True)
                 print(f"COUNTDOWN: switch to LU4 within {args.countdown} seconds. F9 cancels.", flush=True)
@@ -249,7 +302,7 @@ def main(argv=None) -> int:
             else:
                 print("The probe stays ready even if LU4 has not been opened yet.", flush=True)
                 print("F8: send F2 ONCE to the active LU4 window. F9: finish/cancel.", flush=True)
-            if not args.one_cycle:
+            if not args.one_cycle and args.probe_action == "next_target":
                 print("No attack, Spoil, Sweep, movement or pickup is sent.", flush=True)
             message = wintypes.MSG()
             used = False
@@ -298,6 +351,20 @@ def main(argv=None) -> int:
                         record("active_game_found", handle=window.handle)
                         if args.one_cycle:
                             return execute_one_cycle(capture, window, settings, send, poll_stop, events, record)
+                        if args.probe_action == "spoil":
+                            try:
+                                record("probe_action", action="spoil", uses_ocr=False)
+                                tap_action("spoil", lambda: capture.bounds(window.handle), send, cancellable_hold)
+                                cancellable_hold(3.0)
+                                record("probe_finished", action="spoil", result_not_inferred=True)
+                            finally:
+                                try:
+                                    tap_action("cancel", lambda: capture.bounds(window.handle), send)
+                                    record("cancel_target_sent")
+                                except Exception as error:
+                                    record("cancel_target_failed", reason=str(error))
+                            print(f"Spoil-only test ended. Inspect skill animation/MP and send log: {log}", flush=True)
+                            return 0
                         tap_f2(lambda: capture.bounds(window.handle), send, cancellable_hold,
                                key_mode=args.key_mode, hold_seconds=args.hold_ms / 1000)
                     except CaptureUnavailable as error:

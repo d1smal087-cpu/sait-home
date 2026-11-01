@@ -2,10 +2,24 @@ import ctypes
 import unittest
 
 from lu4_observer.capture import CaptureUnavailable, GameWindow
-from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, PROBE_ID, find_active_game, f2_event, probe_hotkeys, tap_f2, tap_action, wait_for_countdown
+from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, PROBE_ID, GUITHREADINFO, find_active_game, f2_event, probe_hotkeys, tap_f2, tap_action, tap_scan, pressed_modifiers, wait_for_countdown
 
 
 class InputProbeTests(unittest.TestCase):
+    def test_scan_sender_matches_verified_f2_bytes_and_timing(self):
+        first, second, first_wait, second_wait = [], [], [], []
+        tap_f2(lambda: None, lambda e: first.append(bytes(e)) or 1, first_wait.append, key_mode="scan", hold_seconds=0.3)
+        tap_scan(60, lambda: None, lambda e: second.append(bytes(e)) or 1, second_wait.append, 0.3)
+        self.assertEqual(first, second)
+        self.assertEqual(first_wait, second_wait)
+
+    def test_modifier_check_uses_only_held_bit(self):
+        self.assertEqual(pressed_modifiers(lambda key: 1), [])
+        self.assertEqual(pressed_modifiers(lambda key: 0x8000 if key in (0x11, 0x12) else 0), ["CTRL", "ALT"])
+
+    def test_gui_thread_info_layout(self):
+        self.assertEqual(ctypes.sizeof(GUITHREADINFO), 72 if ctypes.sizeof(ctypes.c_void_p) == 8 else 48)
+
     def test_action_scan_bindings_and_release(self):
         for action, scan in {"spoil": 2, "attack": 59, "sweep": 3, "pickup": 6, "cancel": 1}.items():
             with self.subTest(action=action):
