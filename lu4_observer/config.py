@@ -63,8 +63,13 @@ class Settings:
             if not (0 <= x1 < x2 <= 1 and 0 <= y1 < y2 <= 1):
                 raise ValueError(f"Область {name} должна быть внутри кадра")
 
+    def size_matches_reference(self, size: tuple[int, int]) -> bool:
+        # Windows captures can differ by one vertical pixel at the same layout.
+        # Keep width exact; larger size changes still require full calibration.
+        return size[0] == self.reference_size[0] and abs(size[1] - self.reference_size[1]) <= 1
+
     def calibrated_for(self, size: tuple[int, int]) -> bool:
-        return list(size) == self.reference_size and set(OCR_REGIONS) <= set(self.calibrated_regions)
+        return self.size_matches_reference(size) and set(OCR_REGIONS) <= set(self.calibrated_regions)
 
     def set_region(self, name: str, rect: list[float], size: tuple[int, int]) -> None:
         if name not in REGION_LABELS:
@@ -77,8 +82,9 @@ class Settings:
             self.regions[name] = previous
             raise
         if list(size) != self.reference_size:
+            if not self.size_matches_reference(size):
+                self.calibrated_regions = []
             self.reference_size = list(size)
-            self.calibrated_regions = []
         if name not in self.calibrated_regions:
             self.calibrated_regions.append(name)
 

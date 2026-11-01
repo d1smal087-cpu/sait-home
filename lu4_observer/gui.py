@@ -243,9 +243,9 @@ class ObserverApp:
         if self.frame is None:
             return
         if self.settings.calibrated_for(self.frame.size):
-            self.calibration_status.set("Размер соответствует настройкам. Проверь рамки; при необходимости подстрой их мышью.")
+            self.calibration_status.set("Размер совместим с настройками. Проверь рамки; при необходимости подстрой их мышью.")
         else:
-            missing = set(OCR_REGIONS) - set(self.settings.calibrated_regions) if list(self.frame.size) == self.settings.reference_size else set(OCR_REGIONS)
+            missing = set(OCR_REGIONS) - set(self.settings.calibrated_regions) if self.settings.size_matches_reference(self.frame.size) else set(OCR_REGIONS)
             names = ", ".join(REGION_LABELS[name] for name in OCR_REGIONS if name in missing)
             self.calibration_status.set(f"Другой размер или неполная настройка. Обведи области: {names}. Затем настрой миникарту и журнал.")
 

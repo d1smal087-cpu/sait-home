@@ -100,6 +100,29 @@ class RecognitionTests(unittest.TestCase):
         self.assertFalse(value.stable)
         self.assertFalse(value.allowed_target)
 
+    def test_one_pixel_shorter_live_frame_keeps_target_state(self):
+        image = Image.new("RGB", (1600, 837))
+        first = self.observe(image=image)
+        self.assertTrue(first.calibrated)
+        self.assertTrue(first.allowed_target)
+        self.assertEqual(first.target_state, "alive")
+        second = self.observe(image=image, second=2)
+        self.assertTrue(second.stable)
+
+    def test_tolerated_size_does_not_replace_missing_ocr(self):
+        value = self.observe(image=Image.new("RGB", (1600, 837)), hp="")
+        self.assertTrue(value.calibrated)
+        self.assertEqual(value.target_state, "unknown")
+        self.assertFalse(value.stable)
+
+    def test_more_than_one_pixel_size_change_stays_uncalibrated(self):
+        for size in ((1600, 836), (1600, 840), (1599, 838), (1601, 838)):
+            with self.subTest(size=size):
+                value = self.observe(image=Image.new("RGB", size))
+                self.assertFalse(value.calibrated)
+                self.assertEqual(value.target_state, "uncalibrated")
+                self.assertFalse(value.allowed_target)
+
     def test_reset_invalidates_confirmation(self):
         self.observe(hp="0/1068")
         self.analyzer.reset()
@@ -107,6 +130,26 @@ class RecognitionTests(unittest.TestCase):
 
 
 class SettingsAndDiagnosticTests(unittest.TestCase):
+    def test_one_pixel_height_difference_preserves_calibration(self):
+        for height in (837, 838, 839):
+            with self.subTest(height=height):
+                self.assertTrue(Settings.load().calibrated_for((1600, height)))
+
+    def test_one_pixel_difference_still_requires_all_ocr_regions(self):
+        settings = Settings.load()
+        settings.calibrated_regions.remove("target_hp")
+        self.assertFalse(settings.calibrated_for((1600, 837)))
+
+    def test_journal_drag_at_one_pixel_difference_preserves_ocr_regions(self):
+        settings = Settings.load()
+        previous = asdict(settings)
+        settings.set_region("journal", [0.01, 0.40, 0.27, 0.68], (1600, 837))
+        self.assertTrue(settings.calibrated_for((1600, 837)))
+        self.assertEqual(settings.calibrated_regions, previous["calibrated_regions"])
+        for name in OCR_REGIONS:
+            self.assertEqual(settings.regions[name], previous["regions"][name])
+        self.assertEqual(settings.reference_size, [1600, 837])
+
     def test_legacy_journal_upgrade_preserves_other_settings_and_file(self):
         settings = Settings.load()
         settings.regions["journal"] = list(LEGACY_JOURNAL_REGION)
