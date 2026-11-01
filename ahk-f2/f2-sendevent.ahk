@@ -3,6 +3,7 @@
 
 SetKeyDelay -1, -1
 SetTitleMatchMode 1
+PROBE_VERSION := "0.2"
 cancelled := false
 DirCreate A_ScriptDir "\runs"
 logPath := A_ScriptDir "\runs\ahk-f2-" A_NowUTC "-" A_TickCount ".jsonl"
@@ -17,16 +18,14 @@ try {
     ExitApp 0
 } catch Error as err {
     try WriteEvent("stopped", ',"reason":"' EscapeJSON(err.Message) '"')
-    FileAppend "Test stopped: " err.Message "`nLog: " logPath "`n", "*"
+    MsgBox "Test stopped: " err.Message "`nLog: " logPath, "LU4 F2 test 0.2"
     ExitApp 1
 }
 
 Probe() {
-    global logPath
     WriteEvent("ready", ',"elevated":' (A_IsAdmin ? "true" : "false") ',"key":"F2","vk":113,"scan":60,"hold_ms":300')
     if !A_IsAdmin
         throw Error("Run test_ahk_f2.bat as administrator.")
-    FileAppend "AutoHotkey v2 SendEvent F2 test. Switch to LU4 within 10 seconds. F9 cancels.`n", "*"
     WaitChecked(10000)
     hwnd := ActiveGame()
     for key in ["Shift", "Ctrl", "Alt", "LWin", "RWin"] {
@@ -48,7 +47,6 @@ Probe() {
     }
     WriteEvent("keyup_dispatched")
     WriteEvent("finished", ',"game_result_verified":false')
-    FileAppend "F2 events dispatched. Game response is NOT verified. Log: " logPath "`n", "*"
 }
 
 WaitChecked(duration, hwnd := 0) {
@@ -78,8 +76,8 @@ ActiveGame() {
 }
 
 WriteEvent(name, extra := "") {
-    global logPath
-    line := '{"utc":"' A_NowUTC '","tick_ms":' A_TickCount ',"engine":"ahk-v2-sendevent","ahk_version":"' A_AhkVersion '","event":"' name '"' extra "}`n"
+    global logPath, PROBE_VERSION
+    line := '{"utc":"' A_NowUTC '","tick_ms":' A_TickCount ',"engine":"ahk-v2-sendevent","probe_version":"' PROBE_VERSION '","ahk_version":"' A_AhkVersion '","event":"' name '"' extra "}`n"
     FileAppend line, logPath, "UTF-8-RAW"
 }
 

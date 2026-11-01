@@ -2,7 +2,7 @@
 
 ## Независимый тест AutoHotkey v2
 
-[Скачать ZIP — одна F2 через SendEvent](https://github.com/d1smal087-cpu/sait-home/raw/refs/heads/lu4-observer/downloads/lu4-ahk-f2-0.1.zip). Нужна установка AutoHotkey **v2**. Это отдельный тест стандартного метода ввода, без Python и Observer. Реальный запуск на Windows ещё не проверен; фильтрацию античитом он не подтверждает и не исключает. [Инструкция и исходники](ahk-f2/README.md).
+[Скачать ZIP 0.2 — одна F2 через SendEvent](https://github.com/d1smal087-cpu/sait-home/raw/refs/heads/lu4-observer/downloads/lu4-ahk-f2-0.2.zip). В 0.2 исправлена ошибка «Неверный дескриптор» при записи в консоль. Нужна установка AutoHotkey **v2**; установленный AHK переустанавливать не нужно. Это отдельный тест стандартного метода ввода, без Python и Observer. Реальный запуск на Windows ещё не проверен; фильтрацию античитом он не подтверждает и не исключает. [Инструкция и исходники](ahk-f2/README.md).
 
 ## Проверка исходной версии 0.1.7
 

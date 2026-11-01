@@ -11,7 +11,8 @@ if not exist "%lu4_ahk%" (
     exit /b 1
 )
 echo In LU4, F2 must be NEXT TARGET. Close chat and clear the target with Esc.
-"%lu4_ahk%" /ErrorStdOut "%~dp0f2-sendevent.ahk"
+echo F2 SendEvent test 0.2. Switch to LU4 within 10 seconds. F9 cancels.
+"%lu4_ahk%" "%~dp0f2-sendevent.ahk"
 set "lu4_ahk_exit=%errorlevel%"
 echo.
 echo Test ended. See runs\ahk-f2-*.jsonl and whether a target was selected.
