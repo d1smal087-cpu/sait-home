@@ -63,13 +63,30 @@ def tap_f2(check_foreground, send, sleep=time.sleep) -> None:
             raise RuntimeError("Windows did not accept the F2 keyup event.")
 
 
+def find_active_game(capture, prefix, report_windows=None):
+    """Resolve again for every trigger: the game may start or recreate its HWND."""
+    windows = capture.windows(prefix)
+    if report_windows is not None:
+        report_windows([window.handle for window in windows])
+    if not windows:
+        raise CaptureUnavailable("No LU4 window found. Open LU4, switch to the game, then press F8 again.")
+    for window in windows:
+        try:
+            capture.bounds(window.handle)
+            return window
+        except CaptureUnavailable:
+            continue
+    raise CaptureUnavailable("LU4 is not active. Switch to the game, then press F8 again.")
+
+
 @contextmanager
 def probe_hotkeys(api):
     registered = []
     try:
         for key_id, virtual_key, label in ((STOP_ID, 0x78, "F9"), (PROBE_ID, 0x77, "F8")):
             if not api.RegisterHotKey(None, key_id, 0x4000, virtual_key):  # MOD_NOREPEAT
-                raise RuntimeError(f"Cannot register {label}. It may be reserved by another application.")
+                error = getattr(ctypes, "get_last_error", lambda: 0)()
+                raise RuntimeError(f"Cannot register {label} (Windows error {error}). It may be reserved by another application.")
             registered.append(key_id)
         yield
     finally:
@@ -88,10 +105,6 @@ def main() -> int:
         enable_dpi_awareness()
         settings = Settings.load()
         capture = WindowsCapture()
-        windows = capture.windows(settings.window_title_prefix)
-        if len(windows) != 1:
-            raise RuntimeError("Keep exactly one LU4 game window open, then restart this probe.")
-        window = windows[0]
         api = capture.api
         api.SendInput.argtypes = [ctypes.c_uint, ctypes.POINTER(INPUT), ctypes.c_int]
         api.SendInput.restype = ctypes.c_uint
@@ -112,12 +125,14 @@ def main() -> int:
                                          "version": __version__, "event": event, **data}) + "\n")
 
         def send(event):
+            ctypes.set_last_error(0)
             count = int(api.SendInput(1, ctypes.byref(event), ctypes.sizeof(INPUT)))
+            error = ctypes.get_last_error()
             # Logging must not interrupt the down/up pair after Windows accepted
             # a keydown (for example, if the disk becomes full).
             try:
                 record("keyup" if event.ki.dwFlags & KEYUP else "keydown", accepted=count,
-                       scan=int(event.ki.wScan))
+                       scan=int(event.ki.wScan), windows_error=error)
             except OSError as error:
                 print(f"Cannot write input log: {error}", flush=True)
             return count
@@ -125,6 +140,8 @@ def main() -> int:
         with probe_hotkeys(api):
             record("ready")
             print(f"LU4 input probe {__version__}", flush=True)
+            print(f"Log: {log}", flush=True)
+            print("The probe stays ready even if LU4 has not been opened yet.", flush=True)
             print("Switch to LU4. Close chat input and remove the current target with Esc.", flush=True)
             print("F8: send F2 ONCE to the active LU4 window. F9: finish/cancel.", flush=True)
             print("No attack, Spoil, Sweep, movement or pickup is sent.", flush=True)
@@ -139,18 +156,24 @@ def main() -> int:
                 if message.message != 0x0312:  # WM_HOTKEY
                     continue
                 if message.wParam == STOP_ID:
+                    record("hotkey_received", key="F9")
                     record("finished" if used else "cancelled")
                     print("Probe stopped. No further input will be sent.", flush=True)
                     return 0
                 if message.wParam == PROBE_ID:
+                    record("hotkey_received", key="F8")
                     if used:
                         print("The one F2 tap was already sent. Press F9 to finish.", flush=True)
                         continue
                     try:
+                        record("foreground_before_probe", handle=int(api.GetForegroundWindow() or 0))
+                        window = find_active_game(capture, settings.window_title_prefix,
+                                                  lambda handles: record("game_windows", handles=handles))
+                        record("active_game_found", handle=window.handle)
                         tap_f2(lambda: capture.bounds(window.handle), send)
-                    except CaptureUnavailable:
-                        record("ignored_inactive_window")
-                        print("LU4 must be active. Switch to the game and press F8 again.", flush=True)
+                    except CaptureUnavailable as error:
+                        record("waiting_for_game", reason=str(error))
+                        print(str(error), flush=True)
                         continue
                     record("probe_finished")
                     used = True

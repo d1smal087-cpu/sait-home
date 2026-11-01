@@ -1,11 +1,47 @@
 import ctypes
 import unittest
 
-from lu4_observer.capture import CaptureUnavailable
-from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, f2_event, probe_hotkeys, tap_f2
+from lu4_observer.capture import CaptureUnavailable, GameWindow
+from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, find_active_game, f2_event, probe_hotkeys, tap_f2
 
 
 class InputProbeTests(unittest.TestCase):
+    def test_missing_game_can_be_found_after_start(self):
+        class Capture:
+            windows_now = []
+            def windows(self, prefix): return self.windows_now
+            def bounds(self, handle): return (0, 0, 1600, 837)
+        capture = Capture()
+        with self.assertRaisesRegex(CaptureUnavailable, "No LU4"):
+            find_active_game(capture, "LU4 -")
+        capture.windows_now = [GameWindow(55, "LU4 - game")]
+        self.assertEqual(find_active_game(capture, "LU4 -").handle, 55)
+
+    def test_only_active_game_is_selected(self):
+        class Capture:
+            def windows(self, prefix): return [GameWindow(11, "LU4 - a"), GameWindow(22, "LU4 - b")]
+            def bounds(self, handle):
+                if handle != 22: raise CaptureUnavailable("inactive")
+                return (0, 0, 1600, 837)
+        self.assertEqual(find_active_game(Capture(), "LU4 -").handle, 22)
+
+    def test_inactive_games_are_rejected(self):
+        class Capture:
+            def windows(self, prefix): return [GameWindow(11, "LU4 - a")]
+            def bounds(self, handle): raise CaptureUnavailable("inactive")
+        with self.assertRaisesRegex(CaptureUnavailable, "not active"):
+            find_active_game(Capture(), "LU4 -")
+
+    def test_recreated_window_is_resolved_again(self):
+        class Capture:
+            handle = 11
+            def windows(self, prefix): return [GameWindow(self.handle, "LU4 - game")]
+            def bounds(self, handle): return (0, 0, 1600, 837)
+        capture = Capture()
+        self.assertEqual(find_active_game(capture, "LU4 -").handle, 11)
+        capture.handle = 22
+        self.assertEqual(find_active_game(capture, "LU4 -").handle, 22)
+
     def test_win32_input_layout(self):
         self.assertEqual(ctypes.sizeof(INPUT), 40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 28)
 
