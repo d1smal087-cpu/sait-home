@@ -1,3 +1,3 @@
-"""Read-only LU4 screen observer. No game input or account access."""
+"""LU4 screen observer and a separate foreground-only F2 input probe."""
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
