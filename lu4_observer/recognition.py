@@ -132,6 +132,12 @@ class Analyzer:
             return parse_resource(reading.text) if reading.confidence >= settings.min_confidence else None
 
         hp, own_hp, mp = (resource(key) for key in ("target_hp", "player_hp", "player_mp"))
+        # With no target panel these crops show the game world. Ambient labels
+        # may look like a target name with high OCR confidence. Only expose a
+        # target when BOTH its name and a valid HP fraction were read this frame.
+        # Keep all raw readings for diagnosis; never reuse a previous target.
+        if target_name is None or hp is None:
+            target_name, hp = None, None
         calibrated = settings.calibrated_for(image.size)
         if not calibrated:
             state = "uncalibrated"

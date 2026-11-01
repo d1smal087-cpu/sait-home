@@ -68,6 +68,47 @@ class RecognitionTests(unittest.TestCase):
     def test_empty_name_is_not_a_dead_target(self):
         value = self.observe(name="", hp="0/1068")
         self.assertEqual(value.target_state, "unknown")
+        self.assertIsNone(value.target_hp)
+
+    def test_world_labels_without_hp_are_not_a_target(self):
+        value = self.observe(name="eGolem Sr .", hp="Warde")
+        self.assertEqual(value.target_state, "unknown")
+        self.assertIsNone(value.target_name)
+        self.assertIsNone(value.target_hp)
+        self.assertFalse(value.allowed_target)
+        self.assertEqual(value.raw["target_name"].text, "eGolem Sr .")
+        self.assertEqual(value.raw["target_hp"].text, "Warde")
+        self.assertEqual(value.player_hp, Resource(2031, 2031))
+
+    def test_allowed_world_label_without_hp_is_not_allowed(self):
+        for text in ("", "Warde", "O/1068", "1069/1068"):
+            with self.subTest(text=text):
+                value = self.observe(name="Ghoul", hp=text)
+                self.assertFalse(value.allowed_target)
+                self.assertIsNone(value.target_name)
+                self.assertIsNone(value.target_hp)
+                self.assertEqual(value.target_state, "unknown")
+
+    def test_low_confidence_hp_rejects_high_confidence_name(self):
+        self.reader.feed(name="Ghoul", hp="0/1068")
+        self.reader.values[1] = TextReading("0/1068", 0.4)
+        value = self.analyzer.analyze(self.image, self.settings, "window:1")
+        self.assertIsNone(value.target_name)
+        self.assertIsNone(value.target_hp)
+        self.assertFalse(value.allowed_target)
+
+    def test_world_text_clears_dead_target_and_resets_confirmation(self):
+        self.observe(hp="0/1068")
+        self.assertTrue(self.observe(hp="0/1068", second=2).stable)
+        cleared = self.observe(name="Ghoul", hp="Warde", second=4)
+        self.assertIsNone(cleared.target_name)
+        self.assertIsNone(cleared.target_hp)
+        self.assertFalse(cleared.stable)
+        self.assertFalse(cleared.allowed_target)
+        returned = self.observe(hp="1068/1068", second=6)
+        self.assertEqual(returned.target_state, "alive")
+        self.assertTrue(returned.allowed_target)
+        self.assertFalse(returned.stable)
 
     def test_lost_target_does_not_reuse_previous_hp(self):
         self.observe(hp="0/1068")
