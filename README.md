@@ -1,5 +1,9 @@
 # LU4 Observer 0.3.1 — Spoil через команду чата
 
+## Независимый тест AutoHotkey v2
+
+[Скачать ZIP — одна F2 через SendEvent](https://github.com/d1smal087-cpu/sait-home/raw/refs/heads/lu4-observer/downloads/lu4-ahk-f2-0.1.zip). Нужна установка AutoHotkey **v2**. Это отдельный тест стандартного метода ввода, без Python и Observer. Реальный запуск на Windows ещё не проверен; фильтрацию античитом он не подтверждает и не исключает. [Инструкция и исходники](ahk-f2/README.md).
+
 ## Проверка исходной версии 0.1.7
 
 [Скачать отдельный запуск старой F2](https://github.com/d1smal087-cpu/sait-home/raw/refs/heads/lu4-observer/downloads/lu4-f2-rollback-0.1.7.zip). Распаковать в текущую папку программы и запустить test_f2_017.bat от имени администратора. F2 в игре должна снова выбирать следующую цель. Нынешние файлы и установленные библиотеки сохраняются. [Инструкция и результаты проверки](ROLLBACK_F2_017.md).
