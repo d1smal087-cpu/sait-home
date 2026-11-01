@@ -27,7 +27,7 @@ def metadata() -> dict:
             "platform": platform.platform(), "packages": packages}
 
 
-def save_bundle(folder: Path, image: Image.Image, observation: Observation, settings: Settings) -> Path:
+def save_bundle(folder: Path, image: Image.Image, observation: Observation, settings: Settings, control_events=None) -> Path:
     from io import BytesIO
 
     folder.mkdir(parents=True, exist_ok=True)
@@ -45,11 +45,14 @@ def save_bundle(folder: Path, image: Image.Image, observation: Observation, sett
         add_json("observation.json", observation.to_dict())
         add_json("config.json", asdict(settings))
         add_json("system.json", metadata())
+        if control_events is not None:
+            add_json("controls.json", control_events)
         add_image("frame.png", image)
         for name in settings.regions:
             add_image(f"regions/{name}.png", image.crop(settings.crop_box(name, image.size)))
         archive.writestr("README.txt", "LU4 Observer: explicit local diagnostic export.\n"
                          "Frame is the last successfully analyzed image, not necessarily current.\n"
                          "Check captured_at and source in observation.json.\n"
-                         "No game commands were sent. No uploads are performed.\n")
+                         + ("No game commands were sent. " if control_events is None else "Input attempts are recorded in controls.json. ")
+                         + "No uploads are performed.\n")
     return path

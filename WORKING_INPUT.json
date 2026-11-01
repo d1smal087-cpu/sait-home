@@ -1,0 +1,12 @@
+{
+  "verified_action": "next_target",
+  "key": "F2",
+  "key_mode": "scan",
+  "hold_ms": 300,
+  "game_window_must_be_active": true,
+  "verified_client_elevated": true,
+  "verified_probe_elevated": true,
+  "confirmation": "Windows accepted keydown/keyup and user confirmed target selection",
+  "verified_date": "2026-11-01",
+  "other_actions_require_game_validation": true
+}

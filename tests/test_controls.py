@@ -2,10 +2,33 @@ import ctypes
 import unittest
 
 from lu4_observer.capture import CaptureUnavailable, GameWindow
-from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, PROBE_ID, find_active_game, f2_event, probe_hotkeys, tap_f2, wait_for_countdown
+from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, PROBE_ID, find_active_game, f2_event, probe_hotkeys, tap_f2, tap_action, wait_for_countdown
 
 
 class InputProbeTests(unittest.TestCase):
+    def test_action_scan_bindings_and_release(self):
+        for action, scan in {"spoil": 2, "attack": 59, "sweep": 3, "pickup": 6, "cancel": 1}.items():
+            with self.subTest(action=action):
+                calls, held = [], []
+                tap_action(action, lambda: None, lambda e: calls.append(e) or 1, held.append)
+                self.assertEqual([e.ki.wScan for e in calls], [scan, scan])
+                self.assertEqual([e.ki.dwFlags for e in calls], [SCANCODE, SCANCODE | KEYUP])
+                self.assertEqual(held, [0.3])
+
+    def test_action_release_on_stop(self):
+        calls = []
+        def stop(_): raise RuntimeError("F9")
+        with self.assertRaisesRegex(RuntimeError, "F9"):
+            tap_action("attack", lambda: None, lambda e: calls.append(e) or 1, stop)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(calls[-1].ki.dwFlags & KEYUP)
+
+    def test_action_rejects_inactive_window(self):
+        calls = []
+        def inactive(): raise CaptureUnavailable("inactive")
+        with self.assertRaises(CaptureUnavailable):
+            tap_action("spoil", inactive, lambda e: calls.append(e) or 1)
+        self.assertEqual(calls, [])
     def test_virtual_f2_events(self):
         down, up = f2_event(key_mode="virtual"), f2_event(True, key_mode="virtual")
         self.assertEqual((down.ki.wVk, down.ki.wScan, down.ki.dwFlags), (0x71, 0, 0))

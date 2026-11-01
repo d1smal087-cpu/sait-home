@@ -1,4 +1,4 @@
-"""A single foreground-only F2 probe. No combat loop or background input."""
+"""Foreground-only tests: a single F2 or one manually selected combat target."""
 from __future__ import annotations
 
 import ctypes
@@ -71,6 +71,25 @@ def tap_f2(check_foreground, send, sleep=time.sleep, *, key_mode="scan", hold_se
         # Release even if focus changed or the probe was interrupted during hold.
         if send(up) != 1:
             raise RuntimeError("Windows did not accept the F2 keyup event.")
+
+
+ACTION_SCANS = {"spoil": 0x02, "attack": 0x3B, "sweep": 0x03, "pickup": 0x06, "cancel": 0x01}
+
+
+def tap_action(action, check_foreground, send, sleep=time.sleep):
+    scan = ACTION_SCANS[action]
+    check_foreground()
+    down, up = INPUT(), INPUT()
+    down.type = up.type = 1
+    down.ki = KEYBDINPUT(0, scan, SCANCODE, 0, 0)
+    up.ki = KEYBDINPUT(0, scan, SCANCODE | KEYUP, 0, 0)
+    if send(down) != 1:
+        raise RuntimeError("Windows did not accept the action keydown")
+    try:
+        sleep(0.3)
+    finally:
+        if send(up) != 1:
+            raise RuntimeError("Windows did not accept the action keyup")
 
 
 def find_active_game(capture, prefix, report_windows=None):
@@ -148,7 +167,10 @@ def main(argv=None) -> int:
                         help="Send one F2 after this many seconds, without F8")
     parser.add_argument("--key-mode", choices=("virtual", "scan"), default="virtual")
     parser.add_argument("--hold-ms", type=int, choices=range(30, 1001), default=300, metavar="30..1000")
+    parser.add_argument("--one-cycle", action="store_true", help="One manually selected mob, then stop")
     args = parser.parse_args(argv)
+    if args.one_cycle:
+        args.countdown, args.key_mode, args.hold_ms = 10, "scan", 300
     if sys.platform != "win32":
         print("The input probe requires Windows. No input was sent.")
         return 1
@@ -176,11 +198,13 @@ def main(argv=None) -> int:
         folder.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
         log = folder / f"controls-test-{stamp}.jsonl"
+        events = []
 
         def record(event, **data):
+            entry = {"time": datetime.now(timezone.utc).isoformat(), "version": __version__, "event": event, **data}
+            events.append(entry)
             with log.open("a", encoding="utf-8") as stream:
-                stream.write(json.dumps({"time": datetime.now(timezone.utc).isoformat(),
-                                         "version": __version__, "event": event, **data}) + "\n")
+                stream.write(json.dumps(entry) + "\n")
 
         def send(event):
             ctypes.set_last_error(0)
@@ -207,19 +231,26 @@ def main(argv=None) -> int:
 
         with probe_hotkeys(api, include_start=args.countdown is None):
             elevation = probe_elevation()
-            record("ready", mode="countdown" if args.countdown else "hotkey", delay=args.countdown,
+            record("ready", mode="single_cycle" if args.one_cycle else ("countdown" if args.countdown else "hotkey"), delay=args.countdown,
                    key_mode=args.key_mode, hold_ms=args.hold_ms, **elevation)
+            if args.one_cycle and elevation["probe_elevated"] is not True:
+                raise RuntimeError("Run test_one_cycle.bat as administrator, matching the verified LU4 setup.")
             print(f"LU4 input probe {__version__}", flush=True)
             print(f"Input mode: {args.key_mode}, hold: {args.hold_ms} ms, elevated: {elevation['probe_elevated']}", flush=True)
             print(f"Log: {log}", flush=True)
-            print("Switch to LU4. Close chat input and remove the current target with Esc.", flush=True)
-            if args.countdown:
+            if args.one_cycle:
+                print("ONE CYCLE: select a nearby living, undamaged Ghoul or Dead Seeker.", flush=True)
+                print("Keep LU4 active. Start in 10 seconds. F9 stops; Escape cancels the target while LU4 is active.", flush=True)
+                print("Attempts: Spoil (1), attack (F1), Sweep (2), pickup (5). No next-target search or return.", flush=True)
+            elif args.countdown:
+                print("Switch to LU4. Close chat input and remove the current target with Esc.", flush=True)
                 print(f"COUNTDOWN: switch to LU4 within {args.countdown} seconds. F9 cancels.", flush=True)
                 print("F8 is not used in this test. One F2 will be attempted when the timer expires.", flush=True)
             else:
                 print("The probe stays ready even if LU4 has not been opened yet.", flush=True)
                 print("F8: send F2 ONCE to the active LU4 window. F9: finish/cancel.", flush=True)
-            print("No attack, Spoil, Sweep, movement or pickup is sent.", flush=True)
+            if not args.one_cycle:
+                print("No attack, Spoil, Sweep, movement or pickup is sent.", flush=True)
             message = wintypes.MSG()
             used = False
             deadline = time.monotonic() + (args.countdown or 0)
@@ -265,6 +296,8 @@ def main(argv=None) -> int:
                         window = find_active_game(capture, settings.window_title_prefix,
                                                   lambda handles: record("game_windows", handles=handles))
                         record("active_game_found", handle=window.handle)
+                        if args.one_cycle:
+                            return execute_one_cycle(capture, window, settings, send, poll_stop, events, record)
                         tap_f2(lambda: capture.bounds(window.handle), send, cancellable_hold,
                                key_mode=args.key_mode, hold_seconds=args.hold_ms / 1000)
                     except CaptureUnavailable as error:
@@ -290,3 +323,64 @@ def main(argv=None) -> int:
                 stream.write(json.dumps({"event": "error", "message": str(error)}) + "\n")
         print(f"Probe error: {error}", flush=True)
         return 1
+
+
+def execute_one_cycle(capture, window, settings, send, poll_stop, events, record):
+    from .diagnostics import save_bundle
+    from .recognition import Analyzer, LocalOCR
+    from .single_cycle import CycleStopped, run_one_cycle
+
+    expected = {"attack": "F1", "spoil": "1", "sweep": "2", "pickup": "5"}
+    if any(settings.game_key_bindings.get(k) != v for k, v in expected.items()):
+        raise RuntimeError("The one-cycle test requires F1 attack, 1 Spoil, 2 Sweep, 5 pickup in config.json.")
+    analyzer = Analyzer(LocalOCR())
+    latest_frame = latest_value = None
+    attempted = False
+
+    def check_stop():
+        if poll_stop():
+            raise CycleStopped("F9 stop requested")
+
+    def wait(duration):
+        if wait_for_countdown(poll_stop, time.monotonic() + duration) == STOP_ID:
+            raise CycleStopped("F9 stop requested")
+
+    def read():
+        nonlocal latest_frame, latest_value
+        check_stop()
+        frame = capture.grab(window.handle)
+        stamp = datetime.now(timezone.utc).isoformat()
+        value = analyzer.analyze(frame, settings, f"window:0x{window.handle:x}", stamp)
+        latest_frame, latest_value = frame, value
+        record("cycle_observation", observation=value.to_dict())
+        check_stop()
+        return value
+
+    def press(action):
+        nonlocal attempted
+        check_stop()
+        record("cycle_action", action=action)
+        # Set before dispatch so cleanup also covers interrupted key holds.
+        attempted = True
+        tap_action(action, lambda: capture.bounds(window.handle), send, wait)
+
+    code = 0
+    try:
+        run_one_cycle(read, press, wait, time.monotonic, record)
+        print("Single cycle ended. Command attempts completed; check Spoil/Sweep and loot in the game.", flush=True)
+    except (Exception, KeyboardInterrupt) as error:
+        code = 1
+        record("cycle_stopped", reason=str(error) or "Interrupted")
+        print(f"Cycle stopped: {error}", flush=True)
+        if attempted:
+            try:
+                tap_action("cancel", lambda: capture.bounds(window.handle), send)
+                record("cancel_target_sent")
+            except Exception as stop_error:
+                record("cancel_target_failed", reason=str(stop_error))
+                print("Press Escape in LU4 to stop any existing autoattack.", flush=True)
+    finally:
+        if latest_frame is not None and latest_value is not None:
+            path = save_bundle(ROOT / "diagnostics", latest_frame, latest_value, settings, control_events=events)
+            print(f"Report ZIP: {path}", flush=True)
+    return code
