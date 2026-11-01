@@ -4,6 +4,7 @@ from __future__ import annotations
 import ctypes
 import argparse
 import json
+import math
 import sys
 import time
 from contextlib import contextmanager
@@ -44,23 +45,31 @@ class INPUT(ctypes.Structure):
     _fields_ = [("type", DWORD), ("data", INPUTUNION)]
 
 
-def f2_event(release: bool = False) -> INPUT:
+def f2_event(release: bool = False, key_mode: str = "scan") -> INPUT:
     event = INPUT()
     event.type = 1  # INPUT_KEYBOARD
-    event.ki = KEYBDINPUT(0, F2_SCAN, SCANCODE | (KEYUP if release else 0), 0, 0)
+    if key_mode == "scan":
+        event.ki = KEYBDINPUT(0, F2_SCAN, SCANCODE | (KEYUP if release else 0), 0, 0)
+    elif key_mode == "virtual":
+        event.ki = KEYBDINPUT(0x71, 0, KEYUP if release else 0, 0, 0)  # VK_F2
+    else:
+        raise ValueError("Unknown F2 key mode")
     return event
 
 
-def tap_f2(check_foreground, send, sleep=time.sleep) -> None:
+def tap_f2(check_foreground, send, sleep=time.sleep, *, key_mode="scan", hold_seconds=0.08) -> None:
     """Check focus immediately before keydown and always release an accepted key."""
+    if not math.isfinite(hold_seconds) or not 0.03 <= hold_seconds <= 1.0:
+        raise ValueError("Key hold must be between 0.03 and 1 second")
+    down, up = f2_event(key_mode=key_mode), f2_event(release=True, key_mode=key_mode)
     check_foreground()
-    if send(f2_event()) != 1:
+    if send(down) != 1:
         raise RuntimeError("Windows did not accept the F2 keydown event.")
     try:
-        sleep(0.08)
+        sleep(hold_seconds)
     finally:
         # Release even if focus changed or the probe was interrupted during hold.
-        if send(f2_event(release=True)) != 1:
+        if send(up) != 1:
             raise RuntimeError("Windows did not accept the F2 keyup event.")
 
 
@@ -108,10 +117,37 @@ def probe_hotkeys(api, include_start=True):
             api.UnregisterHotKey(None, key_id)
 
 
+def probe_elevation():
+    """Read this process's token elevation flag only; never read credentials."""
+    if sys.platform != "win32":
+        return {"probe_elevated": None, "elevation_error": "unsupported_platform"}
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    advapi = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel.GetCurrentProcess.argtypes, kernel.GetCurrentProcess.restype = [], wintypes.HANDLE
+    kernel.CloseHandle.argtypes, kernel.CloseHandle.restype = [wintypes.HANDLE], wintypes.BOOL
+    advapi.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+    advapi.OpenProcessToken.restype = wintypes.BOOL
+    advapi.GetTokenInformation.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+    advapi.GetTokenInformation.restype = wintypes.BOOL
+    token = wintypes.HANDLE()
+    if not advapi.OpenProcessToken(kernel.GetCurrentProcess(), 0x0008, ctypes.byref(token)):
+        return {"probe_elevated": None, "elevation_error": ctypes.get_last_error()}
+    try:
+        elevated, returned = wintypes.DWORD(), wintypes.DWORD()
+        if not advapi.GetTokenInformation(token, 20, ctypes.byref(elevated), ctypes.sizeof(elevated), ctypes.byref(returned)):
+            return {"probe_elevated": None, "elevation_error": ctypes.get_last_error()}
+        return {"probe_elevated": bool(elevated.value), "elevation_error": 0}
+    finally:
+        kernel.CloseHandle(token)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="One foreground-only F2 input test")
     parser.add_argument("--countdown", type=int, choices=range(3, 31), metavar="3..30",
                         help="Send one F2 after this many seconds, without F8")
+    parser.add_argument("--key-mode", choices=("virtual", "scan"), default="virtual")
+    parser.add_argument("--hold-ms", type=int, choices=range(30, 1001), default=300, metavar="30..1000")
     args = parser.parse_args(argv)
     if sys.platform != "win32":
         print("The input probe requires Windows. No input was sent.")
@@ -154,7 +190,8 @@ def main(argv=None) -> int:
             # a keydown (for example, if the disk becomes full).
             try:
                 record("keyup" if event.ki.dwFlags & KEYUP else "keydown", accepted=count,
-                       scan=int(event.ki.wScan), windows_error=error)
+                       scan=int(event.ki.wScan), virtual_key=int(event.ki.wVk),
+                       flags=int(event.ki.dwFlags), windows_error=error)
             except OSError as error:
                 print(f"Cannot write input log: {error}", flush=True)
             return count
@@ -169,8 +206,11 @@ def main(argv=None) -> int:
             return {"handle": int(handle or 0), "class_name": name.value, "pid": int(pid.value)}
 
         with probe_hotkeys(api, include_start=args.countdown is None):
-            record("ready", mode="countdown" if args.countdown else "hotkey", delay=args.countdown)
+            elevation = probe_elevation()
+            record("ready", mode="countdown" if args.countdown else "hotkey", delay=args.countdown,
+                   key_mode=args.key_mode, hold_ms=args.hold_ms, **elevation)
             print(f"LU4 input probe {__version__}", flush=True)
+            print(f"Input mode: {args.key_mode}, hold: {args.hold_ms} ms, elevated: {elevation['probe_elevated']}", flush=True)
             print(f"Log: {log}", flush=True)
             print("Switch to LU4. Close chat input and remove the current target with Esc.", flush=True)
             if args.countdown:
@@ -189,6 +229,10 @@ def main(argv=None) -> int:
                     if message.message == 0x0012 or (message.message == 0x0312 and message.wParam == STOP_ID):
                         return True
                 return False
+
+            def cancellable_hold(duration):
+                if wait_for_countdown(poll_stop, time.monotonic() + duration) == STOP_ID:
+                    raise KeyboardInterrupt()
 
             while True:
                 if args.countdown:
@@ -221,7 +265,8 @@ def main(argv=None) -> int:
                         window = find_active_game(capture, settings.window_title_prefix,
                                                   lambda handles: record("game_windows", handles=handles))
                         record("active_game_found", handle=window.handle)
-                        tap_f2(lambda: capture.bounds(window.handle), send)
+                        tap_f2(lambda: capture.bounds(window.handle), send, cancellable_hold,
+                               key_mode=args.key_mode, hold_seconds=args.hold_ms / 1000)
                     except CaptureUnavailable as error:
                         record("waiting_for_game", reason=str(error))
                         print(str(error), flush=True)

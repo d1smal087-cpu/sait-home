@@ -6,6 +6,45 @@ from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, PROB
 
 
 class InputProbeTests(unittest.TestCase):
+    def test_virtual_f2_events(self):
+        down, up = f2_event(key_mode="virtual"), f2_event(True, key_mode="virtual")
+        self.assertEqual((down.ki.wVk, down.ki.wScan, down.ki.dwFlags), (0x71, 0, 0))
+        self.assertEqual((up.ki.wVk, up.ki.wScan, up.ki.dwFlags), (0x71, 0, KEYUP))
+
+    def test_mode_and_hold_are_preserved_for_pair(self):
+        for mode in ("scan", "virtual"):
+            with self.subTest(mode=mode):
+                calls, held = [], []
+                tap_f2(lambda: None, lambda e: calls.append(e) or 1, held.append,
+                       key_mode=mode, hold_seconds=0.3)
+                self.assertEqual(held, [0.3])
+                self.assertEqual(calls[0].ki.wVk, calls[1].ki.wVk)
+                self.assertEqual(calls[0].ki.wScan, calls[1].ki.wScan)
+                self.assertEqual(calls[1].ki.dwFlags, calls[0].ki.dwFlags | KEYUP)
+
+    def test_invalid_mode_does_not_send_input(self):
+        calls = []
+        with self.assertRaises(ValueError):
+            tap_f2(lambda: None, lambda e: calls.append(e) or 1, key_mode="invalid")
+        self.assertEqual(calls, [])
+
+    def test_unbounded_hold_is_rejected_before_input(self):
+        for hold in (0, -1, 20, float("nan")):
+            with self.subTest(hold=hold):
+                calls = []
+                with self.assertRaises(ValueError):
+                    tap_f2(lambda: None, lambda e: calls.append(e) or 1, hold_seconds=hold)
+                self.assertEqual(calls, [])
+
+    def test_virtual_key_is_released_when_cancelled(self):
+        calls = []
+        def cancel(_): raise KeyboardInterrupt()
+        with self.assertRaises(KeyboardInterrupt):
+            tap_f2(lambda: None, lambda e: calls.append(e) or 1, cancel, key_mode="virtual", hold_seconds=0.3)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[-1].ki.wVk, 0x71)
+        self.assertEqual(calls[-1].ki.dwFlags, KEYUP)
+
     def test_countdown_waits_for_deadline(self):
         times = iter([0, 1, 2])
         sleeps = []

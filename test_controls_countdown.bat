@@ -6,7 +6,7 @@ if not exist ".venv\Scripts\python.exe" (
     pause
     exit /b 1
 )
-".venv\Scripts\python.exe" test_controls.py --countdown 10
+".venv\Scripts\python.exe" test_controls.py --countdown 10 --key-mode virtual --hold-ms 300
 set "probe_exit=%errorlevel%"
 echo.
 echo Timer test ended. No further input will be sent.
