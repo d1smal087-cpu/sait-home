@@ -12,6 +12,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageTk
 
+from . import __version__
 from .capture import CaptureUnavailable, WindowsCapture
 from .config import OCR_REGIONS, REGION_LABELS, ROOT, Settings
 from .diagnostics import save_bundle
@@ -54,7 +55,7 @@ class ObserverApp:
         self.root.after(150, self.tick)
 
     def _build_ui(self) -> None:
-        self.root.title("LU4 Observer 0.1 — только наблюдение")
+        self.root.title(f"LU4 Observer {__version__} — только наблюдение")
         self.root.geometry("1250x850")
         self.root.minsize(920, 720)
         style = ttk.Style(self.root)

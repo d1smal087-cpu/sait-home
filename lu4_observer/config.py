@@ -7,6 +7,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+LEGACY_JOURNAL_REGION = (0.5613, 0.7088, 0.8031, 0.9582)
+LEFT_JOURNAL_REGION = (0.0025, 0.41051, 0.2694, 0.6838)
 OCR_REGIONS = ("target_name", "target_hp", "player_hp", "player_mp")
 REGION_LABELS = {
     "target_name": "Имя цели",
@@ -36,6 +38,10 @@ class Settings:
             source = ROOT / "config.example.json"
         settings = cls(**json.loads(source.read_text(encoding="utf-8")))
         settings.validate()
+        # Upgrade only the untouched 0.1.0 journal preset. Preserve every custom
+        # region, calibration, and the on-disk file until the user saves settings.
+        if tuple(settings.regions["journal"]) == LEGACY_JOURNAL_REGION:
+            settings.regions["journal"] = list(LEFT_JOURNAL_REGION)
         return settings
 
     def validate(self) -> None:

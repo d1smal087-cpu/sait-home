@@ -1,12 +1,13 @@
 import json
 import tempfile
 import unittest
+from dataclasses import asdict
 from pathlib import Path
 from zipfile import ZipFile
 
 from PIL import Image
 
-from lu4_observer.config import OCR_REGIONS, Settings
+from lu4_observer.config import LEFT_JOURNAL_REGION, LEGACY_JOURNAL_REGION, OCR_REGIONS, Settings
 from lu4_observer.diagnostics import save_bundle
 from lu4_observer.recognition import Analyzer, Resource, TextReading, parse_resource
 
@@ -106,6 +107,38 @@ class RecognitionTests(unittest.TestCase):
 
 
 class SettingsAndDiagnosticTests(unittest.TestCase):
+    def test_legacy_journal_upgrade_preserves_other_settings_and_file(self):
+        settings = Settings.load()
+        settings.regions["journal"] = list(LEGACY_JOURNAL_REGION)
+        settings.regions["target_hp"] = [0.61, 0.11, 0.72, 0.14]
+        settings.reference_size = [1600, 840]
+        settings.interval_seconds = 3
+        settings.allowed_targets = ["Dead Seeker"]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "config.json"
+            settings.save(path)
+            original = path.read_bytes()
+            expected = asdict(settings)
+            expected["regions"]["journal"] = list(LEFT_JOURNAL_REGION)
+            updated = Settings.load(path)
+            self.assertEqual(asdict(updated), expected)
+            self.assertEqual(path.read_bytes(), original)
+            updated.save(path)
+            self.assertEqual(Settings.load(path), updated)
+
+    def test_custom_journal_is_not_overwritten(self):
+        settings = Settings.load()
+        settings.regions["journal"] = [0.01, 0.30, 0.28, 0.67]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "config.json"
+            settings.save(path)
+            self.assertEqual(Settings.load(path), settings)
+
+    def test_left_journal_crop_covers_system_text_above_main_chat(self):
+        settings = Settings.load()
+        self.assertEqual(tuple(settings.regions["journal"]), LEFT_JOURNAL_REGION)
+        self.assertEqual(settings.crop_box("journal", (1600, 838)), (4, 344, 431, 573))
+
     def test_new_size_requires_all_four_ocr_regions(self):
         settings = Settings.load()
         for name in OCR_REGIONS:
