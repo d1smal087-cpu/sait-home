@@ -1,0 +1,7 @@
+# Windows x64, CPython 3.12. OCR models are included in RapidOCR's wheel.
+mss==10.1.0
+numpy==2.2.6
+Pillow==11.3.0
+opencv-python==4.12.0.88
+onnxruntime==1.23.2
+rapidocr_onnxruntime==1.4.4
