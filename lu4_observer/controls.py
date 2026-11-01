@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ctypes
+import argparse
 import json
 import sys
 import time
@@ -79,11 +80,24 @@ def find_active_game(capture, prefix, report_windows=None):
     raise CaptureUnavailable("LU4 is not active. Switch to the game, then press F8 again.")
 
 
+def wait_for_countdown(poll_stop, deadline, clock=time.monotonic, sleep=time.sleep):
+    while True:
+        # A queued stop wins even when the timer expires at the same moment.
+        if poll_stop():
+            return STOP_ID
+        if clock() >= deadline:
+            return PROBE_ID
+        sleep(0.05)
+
+
 @contextmanager
-def probe_hotkeys(api):
+def probe_hotkeys(api, include_start=True):
     registered = []
     try:
-        for key_id, virtual_key, label in ((STOP_ID, 0x78, "F9"), (PROBE_ID, 0x77, "F8")):
+        bindings = [(STOP_ID, 0x78, "F9")]
+        if include_start:
+            bindings.append((PROBE_ID, 0x77, "F8"))
+        for key_id, virtual_key, label in bindings:
             if not api.RegisterHotKey(None, key_id, 0x4000, virtual_key):  # MOD_NOREPEAT
                 error = getattr(ctypes, "get_last_error", lambda: 0)()
                 raise RuntimeError(f"Cannot register {label} (Windows error {error}). It may be reserved by another application.")
@@ -94,7 +108,11 @@ def probe_hotkeys(api):
             api.UnregisterHotKey(None, key_id)
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="One foreground-only F2 input test")
+    parser.add_argument("--countdown", type=int, choices=range(3, 31), metavar="3..30",
+                        help="Send one F2 after this many seconds, without F8")
+    args = parser.parse_args(argv)
     if sys.platform != "win32":
         print("The input probe requires Windows. No input was sent.")
         return 1
@@ -114,6 +132,10 @@ def main() -> int:
         api.UnregisterHotKey.restype = wintypes.BOOL
         api.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, ctypes.c_uint, ctypes.c_uint]
         api.GetMessageW.restype = ctypes.c_int
+        api.PeekMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
+        api.PeekMessageW.restype = wintypes.BOOL
+        api.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+        api.GetClassNameW.restype = ctypes.c_int
         folder = ROOT / "runs"
         folder.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -137,18 +159,44 @@ def main() -> int:
                 print(f"Cannot write input log: {error}", flush=True)
             return count
 
-        with probe_hotkeys(api):
-            record("ready")
+        def foreground_info():
+            handle = api.GetForegroundWindow()
+            name = ctypes.create_unicode_buffer(256)
+            pid = wintypes.DWORD()
+            if handle:
+                api.GetClassNameW(handle, name, len(name))
+                api.GetWindowThreadProcessId(handle, ctypes.byref(pid))
+            return {"handle": int(handle or 0), "class_name": name.value, "pid": int(pid.value)}
+
+        with probe_hotkeys(api, include_start=args.countdown is None):
+            record("ready", mode="countdown" if args.countdown else "hotkey", delay=args.countdown)
             print(f"LU4 input probe {__version__}", flush=True)
             print(f"Log: {log}", flush=True)
-            print("The probe stays ready even if LU4 has not been opened yet.", flush=True)
             print("Switch to LU4. Close chat input and remove the current target with Esc.", flush=True)
-            print("F8: send F2 ONCE to the active LU4 window. F9: finish/cancel.", flush=True)
+            if args.countdown:
+                print(f"COUNTDOWN: switch to LU4 within {args.countdown} seconds. F9 cancels.", flush=True)
+                print("F8 is not used in this test. One F2 will be attempted when the timer expires.", flush=True)
+            else:
+                print("The probe stays ready even if LU4 has not been opened yet.", flush=True)
+                print("F8: send F2 ONCE to the active LU4 window. F9: finish/cancel.", flush=True)
             print("No attack, Spoil, Sweep, movement or pickup is sent.", flush=True)
             message = wintypes.MSG()
             used = False
+            deadline = time.monotonic() + (args.countdown or 0)
+
+            def poll_stop():
+                while api.PeekMessageW(ctypes.byref(message), None, 0, 0, 1):
+                    if message.message == 0x0012 or (message.message == 0x0312 and message.wParam == STOP_ID):
+                        return True
+                return False
+
             while True:
-                result = api.GetMessageW(ctypes.byref(message), None, 0, 0)
+                if args.countdown:
+                    command = wait_for_countdown(poll_stop, deadline)
+                    message.message, message.wParam = 0x0312, command
+                    result = 1
+                else:
+                    result = api.GetMessageW(ctypes.byref(message), None, 0, 0)
                 if result == -1:
                     raise ctypes.WinError(ctypes.get_last_error())
                 if result == 0:
@@ -161,12 +209,15 @@ def main() -> int:
                     print("Probe stopped. No further input will be sent.", flush=True)
                     return 0
                 if message.wParam == PROBE_ID:
-                    record("hotkey_received", key="F8")
+                    if args.countdown:
+                        record("countdown_elapsed")
+                    else:
+                        record("hotkey_received", key="F8")
                     if used:
                         print("The one F2 tap was already sent. Press F9 to finish.", flush=True)
                         continue
                     try:
-                        record("foreground_before_probe", handle=int(api.GetForegroundWindow() or 0))
+                        record("foreground_before_probe", **foreground_info())
                         window = find_active_game(capture, settings.window_title_prefix,
                                                   lambda handles: record("game_windows", handles=handles))
                         record("active_game_found", handle=window.handle)
@@ -174,11 +225,16 @@ def main() -> int:
                     except CaptureUnavailable as error:
                         record("waiting_for_game", reason=str(error))
                         print(str(error), flush=True)
+                        if args.countdown:
+                            print("Timer test ended without sending F2. See the log for window details.", flush=True)
+                            return 1
                         continue
                     record("probe_finished")
                     used = True
                     print("Windows accepted the F2 events. Check whether LU4 selected a target.", flush=True)
                     print(f"Log: {log}", flush=True)
+                    if args.countdown:
+                        return 0
                     print("Press F9 to finish. Further F8 presses will not send input.", flush=True)
     except KeyboardInterrupt:
         print("Probe cancelled.", flush=True)

@@ -2,10 +2,36 @@ import ctypes
 import unittest
 
 from lu4_observer.capture import CaptureUnavailable, GameWindow
-from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, find_active_game, f2_event, probe_hotkeys, tap_f2
+from lu4_observer.controls import INPUT, KEYUP, SCANCODE, F2_SCAN, STOP_ID, PROBE_ID, find_active_game, f2_event, probe_hotkeys, tap_f2, wait_for_countdown
 
 
 class InputProbeTests(unittest.TestCase):
+    def test_countdown_waits_for_deadline(self):
+        times = iter([0, 1, 2])
+        sleeps = []
+        result = wait_for_countdown(lambda: False, 2, lambda: next(times), lambda n: sleeps.append(n))
+        self.assertEqual(result, PROBE_ID)
+        self.assertEqual(len(sleeps), 2)
+
+    def test_countdown_stop_wins_at_deadline(self):
+        result = wait_for_countdown(lambda: True, 2, lambda: 2, lambda n: self.fail("must not wait"))
+        self.assertEqual(result, STOP_ID)
+
+    def test_countdown_stop_before_deadline(self):
+        stops = iter([False, True])
+        result = wait_for_countdown(lambda: next(stops), 10, lambda: 0, lambda n: None)
+        self.assertEqual(result, STOP_ID)
+
+    def test_timer_mode_does_not_register_f8(self):
+        class Api:
+            def __init__(self): self.registered = []; self.released = []
+            def RegisterHotKey(self, window, key_id, flags, key): self.registered.append(key_id); return True
+            def UnregisterHotKey(self, window, key_id): self.released.append(key_id)
+        api = Api()
+        with probe_hotkeys(api, include_start=False):
+            self.assertEqual(api.registered, [STOP_ID])
+        self.assertEqual(api.released, [STOP_ID])
+
     def test_missing_game_can_be_found_after_start(self):
         class Capture:
             windows_now = []
